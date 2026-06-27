@@ -94,7 +94,7 @@ export default function Appointments() {
     <div className="flex gap-4">
       {/* Sidebar */}
       <div className="w-52 shrink-0">
-        <div className="card">
+        <div className="bds-card">
           <div className="px-3 py-2.5 border-b border-gray-100">
             <p className="font-semibold text-sm text-gray-700">Quản lý lịch hẹn</p>
             <p className="text-xs text-gray-400 mt-0.5">Lịch hẹn với khách hàng</p>
@@ -140,7 +140,7 @@ export default function Appointments() {
           <button className="btn-secondary gap-2"><SlidersHorizontal size={14} /> Bộ lọc</button>
         </div>
 
-        <div className="card overflow-hidden">
+        <div className="bds-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

@@ -85,7 +85,7 @@ export default function Deposits() {
         <button className="btn-secondary gap-2"><SlidersHorizontal size={14} /> Bộ lọc</button>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bds-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

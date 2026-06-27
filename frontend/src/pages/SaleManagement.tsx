@@ -61,7 +61,7 @@ export default function SaleManagement() {
         </button>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bds-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

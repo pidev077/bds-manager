@@ -45,7 +45,7 @@
     @apply block text-xs font-medium text-gray-600 mb-1;
   }
 
-  .card {
+  .bds-card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200;
   }
 
@@ -120,6 +120,14 @@
   .tab-item.active {
     @apply text-brand border-brand;
   }
+
+  .filter-chip {
+    @apply px-2.5 py-1 rounded-full text-xs font-medium border border-gray-200 bg-white text-gray-600 whitespace-nowrap cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-colors;
+  }
+
+  .filter-chip.active {
+    @apply bg-brand/10 border-brand text-brand;
+  }
 }
 
 /* Scrollbar */
@@ -127,3 +135,9 @@
 ::-webkit-scrollbar-track { @apply bg-gray-100; }
 ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400; }
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar { display: none; }

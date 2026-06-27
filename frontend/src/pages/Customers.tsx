@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, SlidersHorizontal, Phone } from 'lucide-react'
-import { customersApi } from '@/lib/api'
-import { formatDate, getInitials, getAvatarColor } from '@/lib/utils'
-import type { Customer } from '@/types'
+import { Plus, Search, SlidersHorizontal, Phone, History, Trash2 } from 'lucide-react'
+import { customersApi, careLogsApi } from '@/lib/api'
+import { formatDate, formatDateTime, getInitials, getAvatarColor } from '@/lib/utils'
+import type { Customer, CareLog } from '@/types'
+import { CARE_LOG_TYPE_LABELS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -40,6 +41,9 @@ export default function Customers() {
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Customer | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [careCustomer, setCareCustomer] = useState<Customer | null>(null)
+  const [newLogType, setNewLogType] = useState('call')
+  const [newLogContent, setNewLogContent] = useState('')
   const qc = useQueryClient()
 
   const params: Record<string, unknown> = { page, per_page: 20, search: search || undefined }
@@ -80,6 +84,28 @@ export default function Customers() {
     setOpenForm(true)
   }
 
+  const { data: careLogsData } = useQuery({
+    queryKey: ['care-logs', careCustomer?.id],
+    queryFn: () => careLogsApi.list(careCustomer!.id),
+    enabled: !!careCustomer,
+  })
+  const careLogs: CareLog[] = careLogsData?.data ?? []
+
+  const addLogMutation = useMutation({
+    mutationFn: () => careLogsApi.create({ customer_id: careCustomer!.id, log_type: newLogType, content: newLogContent }),
+    onSuccess: () => {
+      toast.success('Đã thêm vào nhật ký')
+      qc.invalidateQueries({ queryKey: ['care-logs', careCustomer?.id] })
+      setNewLogContent('')
+    },
+    onError: () => toast.error('Có lỗi xảy ra!'),
+  })
+
+  const deleteLogMutation = useMutation({
+    mutationFn: (id: number) => careLogsApi.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['care-logs', careCustomer?.id] }) },
+  })
+
   return (
     <div>
       <div className="page-header">
@@ -107,7 +133,7 @@ export default function Customers() {
         <button className="btn-secondary gap-2"><SlidersHorizontal size={14} /> Bộ lọc / 1</button>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bds-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -162,6 +188,9 @@ export default function Customers() {
                   <td className="table-cell">
                     <div className="flex gap-2">
                       <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(c)}>Sửa</button>
+                      <button className="text-xs text-gray-500 hover:underline flex items-center gap-1" onClick={() => setCareCustomer(c)}>
+                        <History size={12} /> Nhật ký
+                      </button>
                       <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(c.id)}>Xóa</button>
                     </div>
                   </td>
@@ -255,6 +284,44 @@ export default function Customers() {
         onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
       />
+
+      <Modal
+        open={!!careCustomer}
+        onClose={() => setCareCustomer(null)}
+        title={`Nhật ký chăm sóc - ${careCustomer?.full_name ?? ''}`}
+        size="lg"
+      >
+        <div className="flex gap-2 mb-4">
+          <select className="input w-40" value={newLogType} onChange={e => setNewLogType(e.target.value)}>
+            {Object.entries(CARE_LOG_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <input className="input flex-1" placeholder="Nội dung chăm sóc..." value={newLogContent} onChange={e => setNewLogContent(e.target.value)} />
+          <button className="btn-primary" disabled={!newLogContent.trim() || addLogMutation.isPending} onClick={() => addLogMutation.mutate()}>
+            <Plus size={16} /> Thêm
+          </button>
+        </div>
+
+        {careLogs.length === 0 ? (
+          <EmptyState message="Chưa có nhật ký chăm sóc nào" />
+        ) : (
+          <div className="relative pl-5 border-l-2 border-gray-100 space-y-4">
+            {careLogs.map(log => (
+              <div key={log.id} className="relative">
+                <span className="absolute -left-[26px] top-0.5 w-3 h-3 rounded-full bg-brand border-2 border-white" />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">{formatDateTime(log.log_date)}</p>
+                  <button className="text-gray-300 hover:text-red-500" onClick={() => deleteLogMutation.mutate(log.id)}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <p className="text-sm font-medium text-gray-800 mt-0.5">{CARE_LOG_TYPE_LABELS[log.log_type] || log.log_type}</p>
+                <p className="text-sm text-gray-600">{log.content}</p>
+                {log.created_by_name && <p className="text-xs text-gray-400 mt-0.5">— {log.created_by_name}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

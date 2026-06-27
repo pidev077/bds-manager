@@ -11,6 +11,10 @@ import KPIDashboard from '@/pages/KPIDashboard'
 import ActivityLog from '@/pages/ActivityLog'
 import SaleManagement from '@/pages/SaleManagement'
 import UserManagement from '@/pages/UserManagement'
+import PropertyOwners from '@/pages/PropertyOwners'
+import Cart from '@/pages/Cart'
+import DocumentRepository from '@/pages/DocumentRepository'
+import ProjectManagement from '@/pages/ProjectManagement'
 import { useAuthStore } from '@/store/authStore'
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -33,6 +37,9 @@ export default function App() {
           <Route path="needs" element={<Needs />} />
           <Route path="deposits" element={<Deposits />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="property-owners" element={<PropertyOwners />} />
+          <Route path="cart" element={<Cart />} />
+          <Route path="documents" element={<DocumentRepository />} />
           <Route path="sale-management" element={<SaleManagement />} />
           <Route path="kpi" element={
             <ProtectedRoute adminOnly><KPIDashboard /></ProtectedRoute>
@@ -42,6 +49,9 @@ export default function App() {
           } />
           <Route path="users" element={
             <ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>
+          } />
+          <Route path="project-management" element={
+            <ProtectedRoute adminOnly><ProjectManagement /></ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/tasks" replace />} />
         </Route>

@@ -14,6 +14,17 @@ class BDS_API_Needs extends BDS_API_Base {
             ['methods' => 'PUT',    'callback' => [$this, 'update_item'], 'permission_callback' => [$this, 'permission_callback']],
             ['methods' => 'DELETE', 'callback' => [$this, 'delete_item'], 'permission_callback' => [$this, 'permission_callback']],
         ]);
+        register_rest_route($ns, '/needs/(?P<id>\d+)/matches', [
+            ['methods' => 'GET', 'callback' => [$this, 'get_matches'], 'permission_callback' => [$this, 'permission_callback']],
+        ]);
+    }
+
+    public function get_matches(WP_REST_Request $request): WP_REST_Response|WP_Error {
+        global $wpdb;
+        $need = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_needs WHERE id = %d", (int) $request['id']));
+        if (!$need) return $this->not_found();
+        $matches = BDS_Need_Matcher::find_matching_properties($need, 10);
+        return new WP_REST_Response($this->format_items($matches));
     }
 
     public function get_items(WP_REST_Request $request): WP_REST_Response {

@@ -152,7 +152,7 @@ export default function Tasks() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {COLUMNS.map(col => (
-            <div key={col.key} className="card p-4">
+            <div key={col.key} className="bds-card p-4">
               <div className="h-5 bg-gray-200 rounded w-24 mb-4 animate-pulse" />
               <LoadingState rows={3} />
             </div>
@@ -163,7 +163,7 @@ export default function Tasks() {
           {COLUMNS.map(col => {
             const items = getColumnItems(col.processing_status)
             return (
-              <div key={col.key} className="card">
+              <div key={col.key} className="bds-card">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-gray-700">{col.label}</h3>
                   <span className="badge badge-blue">{items.length}</span>

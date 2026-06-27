@@ -23,6 +23,7 @@ class BDS_Database {
             bathrooms TINYINT UNSIGNED DEFAULT 0,
             direction VARCHAR(50) DEFAULT NULL,
             balcony_direction VARCHAR(50) DEFAULT NULL,
+            view_type VARCHAR(50) DEFAULT NULL,
             price DECIMAL(20,2) DEFAULT NULL,
             price_per_sqm DECIMAL(15,2) DEFAULT NULL,
             status VARCHAR(50) DEFAULT 'available',
@@ -41,7 +42,8 @@ class BDS_Database {
             UNIQUE KEY code (code),
             KEY idx_status (status),
             KEY idx_project (project_name(100)),
-            KEY idx_created_by (created_by)
+            KEY idx_created_by (created_by),
+            KEY idx_view_type (view_type)
         ) $charset;");
 
         // Customers (Khách hàng - private per employee)
@@ -206,6 +208,75 @@ class BDS_Database {
             KEY idx_created_by (created_by)
         ) $charset;");
 
+        // Property Owners (Chủ nhà / hàng chuyển nhượng)
+        dbDelta("CREATE TABLE {$wpdb->prefix}bds_property_owners (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            property_id BIGINT UNSIGNED NOT NULL,
+            owner_name VARCHAR(255) NOT NULL,
+            owner_phone VARCHAR(20) DEFAULT NULL,
+            selling_price DECIMAL(20,2) DEFAULT NULL,
+            commission_rate DECIMAL(5,2) DEFAULT NULL,
+            notes TEXT DEFAULT NULL,
+            assigned_to BIGINT UNSIGNED NOT NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_property_id (property_id),
+            KEY idx_assigned_to (assigned_to)
+        ) $charset;");
+
+        // Cart Items (Giỏ hàng theo khách)
+        dbDelta("CREATE TABLE {$wpdb->prefix}bds_cart_items (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            customer_id BIGINT UNSIGNED NOT NULL,
+            property_id BIGINT UNSIGNED NOT NULL,
+            added_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uniq_customer_property (customer_id, property_id),
+            KEY idx_customer_id (customer_id)
+        ) $charset;");
+
+        // Documents (Kho tài liệu theo dự án)
+        dbDelta("CREATE TABLE {$wpdb->prefix}bds_documents (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            project_name VARCHAR(255) DEFAULT NULL,
+            category VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            file_url VARCHAR(500) NOT NULL,
+            file_name VARCHAR(255) DEFAULT NULL,
+            file_size BIGINT UNSIGNED DEFAULT 0,
+            uploaded_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_project (project_name(100)),
+            KEY idx_category (category)
+        ) $charset;");
+
+        // Care Logs (Nhật ký chăm sóc khách hàng)
+        dbDelta("CREATE TABLE {$wpdb->prefix}bds_care_logs (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            customer_id BIGINT UNSIGNED NOT NULL,
+            log_type VARCHAR(50) DEFAULT 'note',
+            content TEXT DEFAULT NULL,
+            log_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_customer_id (customer_id),
+            KEY idx_log_date (log_date)
+        ) $charset;");
+
+        // Projects (Danh sách dự án)
+        dbDelta("CREATE TABLE {$wpdb->prefix}bds_projects (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(255) NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uniq_name (name)
+        ) $charset;");
+
         // Activity Logs
         dbDelta("CREATE TABLE {$wpdb->prefix}bds_activity_logs (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -250,6 +321,7 @@ class BDS_Database {
             'bds_properties', 'bds_customers', 'bds_needs',
             'bds_appointments', 'bds_deposits', 'bds_transactions',
             'bds_sale_requests', 'bds_activity_logs', 'bds_notifications',
+            'bds_property_owners', 'bds_cart_items', 'bds_documents', 'bds_care_logs', 'bds_projects',
         ];
         foreach ($tables as $table) {
             $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}{$table}");

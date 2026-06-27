@@ -40,6 +40,7 @@ export interface Property {
   bathrooms: number
   direction: string
   balcony_direction: string
+  view_type: string
   price: number
   price_per_sqm: number
   status: 'available' | 'reserved' | 'sold' | 'cancelled'
@@ -53,6 +54,13 @@ export interface Property {
   updated_by: number
   created_at: string
   updated_at: string
+}
+
+export interface Project {
+  id: number
+  name: string
+  created_at: string
+  property_count: number
 }
 
 export const PROPERTY_STATUS_LABELS: Record<string, string> = {
@@ -286,6 +294,85 @@ export interface User {
   registered: string
   is_admin: boolean
   is_manager: boolean
+}
+
+// ─── Property Owner ───────────────────────────────────────────────────────────
+export interface PropertyOwner {
+  id: number
+  property_id: number
+  property_code?: string
+  property_title?: string
+  owner_name: string
+  owner_phone: string
+  selling_price: number
+  commission_rate: number
+  notes: string
+  assigned_to: number
+  assigned_to_name?: string
+  created_by: number
+  created_at: string
+  updated_at: string
+}
+
+// ─── Cart Item ────────────────────────────────────────────────────────────────
+export interface CartItem {
+  id: number
+  customer_id: number
+  property_id: number
+  property_code?: string
+  property_title?: string
+  property_price?: number
+  property_project?: string
+  property_status?: string
+  property_area_gross?: number
+  property_bedrooms?: number
+  property_type?: string
+  added_by: number
+  created_at: string
+}
+
+// ─── Document ─────────────────────────────────────────────────────────────────
+export interface BdsDocument {
+  id: number
+  project_name: string
+  category: string
+  title: string
+  file_url: string
+  file_name: string
+  file_size: number
+  uploaded_by: number
+  uploaded_by_name?: string
+  created_at: string
+}
+
+export const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
+  price_list: 'Bảng giá',
+  policy: 'Chính sách bán hàng',
+  pdf: 'File PDF',
+  floor_plan: 'Mặt bằng',
+  legal: 'Pháp lý',
+  video: 'Video dự án',
+}
+
+// ─── Care Log ─────────────────────────────────────────────────────────────────
+export interface CareLog {
+  id: number
+  customer_id: number
+  log_type: string
+  content: string
+  log_date: string
+  created_by: number
+  created_by_name?: string
+  created_at: string
+}
+
+export const CARE_LOG_TYPE_LABELS: Record<string, string> = {
+  call: 'Gọi điện',
+  send_price: 'Gửi bảng giá',
+  appointment: 'Hẹn xem nhà',
+  visit: 'Đã xem nhà',
+  consideration: 'Đang cân nhắc',
+  note: 'Ghi chú khác',
 }
 
 // ─── Sale Request ──────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BDS_VERSION', '1.0.0');
+define('BDS_VERSION', '1.4.0');
 define('BDS_PLUGIN_FILE', __FILE__);
 define('BDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BDS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -18,6 +18,7 @@ define('BDS_API_NAMESPACE', 'bds/v1');
 require_once BDS_PLUGIN_DIR . 'includes/class-bds-database.php';
 require_once BDS_PLUGIN_DIR . 'includes/class-bds-roles.php';
 require_once BDS_PLUGIN_DIR . 'includes/class-bds-activity-logger.php';
+require_once BDS_PLUGIN_DIR . 'includes/class-bds-need-matcher.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-base.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-properties.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-customers.php';
@@ -29,15 +30,39 @@ require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-kpi.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-activity.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-notifications.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-users.php';
+require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-property-owners.php';
+require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-cart.php';
+require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-documents.php';
+require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-care-logs.php';
+require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-projects.php';
+
+function bds_seed_default_projects() {
+    global $wpdb;
+    if ((int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}bds_projects") > 0) return;
+
+    $defaults = ['Vinhomes Ocean Park', 'Vinhomes Golden Avenue', 'Vinhomes Green City', 'Vinhomes Hải Vân Bay', 'Vinhomes Global Gate', 'Vinhomes Golden City', 'Vinhomes Ocean Park 3', 'Vinhomes Green Paradise', 'Vinhomes Wonder City', 'Vinhomes Grand Park', 'Vinhomes Ocean Park 2'];
+    foreach ($defaults as $name) {
+        $wpdb->insert($wpdb->prefix . 'bds_projects', ['name' => $name, 'created_at' => current_time('mysql')]);
+    }
+}
 
 register_activation_hook(__FILE__, function () {
     BDS_Database::create_tables();
     BDS_Roles::add_roles();
+    bds_seed_default_projects();
     update_option('bds_version', BDS_VERSION);
     flush_rewrite_rules();
 });
 
 register_deactivation_hook(__FILE__, 'flush_rewrite_rules');
+
+add_action('plugins_loaded', function () {
+    if (get_option('bds_version') !== BDS_VERSION) {
+        BDS_Database::create_tables();
+        bds_seed_default_projects();
+        update_option('bds_version', BDS_VERSION);
+    }
+});
 
 add_action('rest_api_init', function () {
     (new BDS_API_Properties())->register_routes();
@@ -50,6 +75,11 @@ add_action('rest_api_init', function () {
     (new BDS_API_Activity())->register_routes();
     (new BDS_API_Notifications())->register_routes();
     (new BDS_API_Users())->register_routes();
+    (new BDS_API_Property_Owners())->register_routes();
+    (new BDS_API_Cart())->register_routes();
+    (new BDS_API_Documents())->register_routes();
+    (new BDS_API_Care_Logs())->register_routes();
+    (new BDS_API_Projects())->register_routes();
 });
 
 add_action('admin_menu', function () {

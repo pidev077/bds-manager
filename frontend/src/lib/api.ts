@@ -59,6 +59,7 @@ export const extractPagination = (headers: Record<string, string>) => ({
 export const propertiesApi = {
   list: (params?: Record<string, unknown>) => api.get('/properties', { params }),
   get:  (id: number) => api.get(`/properties/${id}`),
+  similar: (id: number) => api.get(`/properties/${id}/similar`),
   create: (data: unknown) => api.post('/properties', data),
   update: (id: number, data: unknown) => api.put(`/properties/${id}`, data),
   delete: (id: number) => api.delete(`/properties/${id}`),
@@ -77,6 +78,7 @@ export const customersApi = {
 export const needsApi = {
   list: (params?: Record<string, unknown>) => api.get('/needs', { params }),
   get:  (id: number) => api.get(`/needs/${id}`),
+  matches: (id: number) => api.get(`/needs/${id}/matches`),
   create: (data: unknown) => api.post('/needs', data),
   update: (id: number, data: unknown) => api.put(`/needs/${id}`, data),
   delete: (id: number) => api.delete(`/needs/${id}`),
@@ -140,6 +142,44 @@ export const usersApi = {
   create: (data: unknown) => api.post('/users', data),
   update: (id: number, data: unknown) => api.put(`/users/${id}`, data),
   delete: (id: number) => api.delete(`/users/${id}`),
+}
+
+// ─── Property Owners ──────────────────────────────────────────────────────────
+export const propertyOwnersApi = {
+  list: (params?: Record<string, unknown>) => api.get('/property-owners', { params }),
+  get:  (id: number) => api.get(`/property-owners/${id}`),
+  create: (data: unknown) => api.post('/property-owners', data),
+  update: (id: number, data: unknown) => api.put(`/property-owners/${id}`, data),
+  delete: (id: number) => api.delete(`/property-owners/${id}`),
+}
+
+// ─── Cart ─────────────────────────────────────────────────────────────────────
+export const cartApi = {
+  list: (customerId: number) => api.get('/cart', { params: { customer_id: customerId } }),
+  add: (data: { customer_id: number; property_id: number }) => api.post('/cart', data),
+  remove: (id: number) => api.delete(`/cart/${id}`),
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+export const documentsApi = {
+  list: (params?: Record<string, unknown>) => api.get('/documents', { params }),
+  upload: (formData: FormData) => api.post('/documents/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  delete: (id: number) => api.delete(`/documents/${id}`),
+}
+
+// ─── Care Logs ────────────────────────────────────────────────────────────────
+export const careLogsApi = {
+  list: (customerId: number) => api.get('/care-logs', { params: { customer_id: customerId } }),
+  create: (data: { customer_id: number; log_type: string; content: string; log_date?: string }) => api.post('/care-logs', data),
+  delete: (id: number) => api.delete(`/care-logs/${id}`),
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+export const projectsApi = {
+  list: () => api.get('/projects'),
+  create: (data: { name: string }) => api.post('/projects', data),
+  update: (id: number, data: { name: string }) => api.put(`/projects/${id}`, data),
+  delete: (id: number) => api.delete(`/projects/${id}`),
 }
 
 export { parseError }

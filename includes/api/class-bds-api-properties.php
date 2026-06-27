@@ -16,6 +16,9 @@ class BDS_API_Properties extends BDS_API_Base {
             ['methods' => 'PUT',    'callback' => [$this, 'update_item'], 'permission_callback' => [$this, 'permission_callback']],
             ['methods' => 'DELETE', 'callback' => [$this, 'delete_item'], 'permission_callback' => [$this, 'permission_callback']],
         ]);
+        register_rest_route($ns, '/properties/(?P<id>\d+)/similar', [
+            ['methods' => 'GET', 'callback' => [$this, 'get_similar_items'], 'permission_callback' => [$this, 'permission_callback']],
+        ]);
     }
 
     public function get_items(WP_REST_Request $request): WP_REST_Response {
@@ -30,7 +33,7 @@ class BDS_API_Properties extends BDS_API_Base {
             $vals = array_merge($vals, ["%$search%", "%$search%", "%$search%", "%$search%"]);
         }
 
-        foreach (['status', 'project_name', 'property_type', 'fund_type'] as $f) {
+        foreach (['status', 'project_name', 'property_type', 'fund_type', 'view_type'] as $f) {
             $v = $request->get_param($f);
             if ($v !== null && $v !== '') {
                 $where[] = "{$f} = %s";
@@ -41,6 +44,23 @@ class BDS_API_Properties extends BDS_API_Base {
         if ($request->get_param('bedrooms')) {
             $where[] = 'bedrooms = %d';
             $vals[]  = (int) $request->get_param('bedrooms');
+        }
+
+        if ($request->get_param('price_min') !== null && $request->get_param('price_min') !== '') {
+            $where[] = 'price >= %f';
+            $vals[]  = (float) $request->get_param('price_min');
+        }
+        if ($request->get_param('price_max') !== null && $request->get_param('price_max') !== '') {
+            $where[] = 'price <= %f';
+            $vals[]  = (float) $request->get_param('price_max');
+        }
+        if ($request->get_param('area_min') !== null && $request->get_param('area_min') !== '') {
+            $where[] = 'area_gross >= %f';
+            $vals[]  = (float) $request->get_param('area_min');
+        }
+        if ($request->get_param('area_max') !== null && $request->get_param('area_max') !== '') {
+            $where[] = 'area_gross <= %f';
+            $vals[]  = (float) $request->get_param('area_max');
         }
 
         $sort  = in_array($request->get_param('sort'), ['price', 'area_gross', 'created_at', 'updated_at']) ? $request->get_param('sort') : 'created_at';
@@ -81,6 +101,7 @@ class BDS_API_Properties extends BDS_API_Base {
             'bathrooms'         => (int) ($request->get_param('bathrooms') ?? 0),
             'direction'         => sanitize_text_field($request->get_param('direction') ?? ''),
             'balcony_direction' => sanitize_text_field($request->get_param('balcony_direction') ?? ''),
+            'view_type'         => sanitize_text_field($request->get_param('view_type') ?? ''),
             'price'             => (float) ($request->get_param('price') ?? 0),
             'price_per_sqm'     => (float) ($request->get_param('price_per_sqm') ?? 0),
             'status'            => sanitize_text_field($request->get_param('status') ?? 'available'),
@@ -106,7 +127,23 @@ class BDS_API_Properties extends BDS_API_Base {
         $this->notify_all_users('new_property', 'Nhà bán mới', "Nhà bán \"{$title}\" vừa được thêm vào hệ thống", 'property', $id);
 
         $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_properties WHERE id = %d", $id));
+        $this->notify_matching_needs($item, $title);
+
         return new WP_REST_Response($this->format_item($item), 201);
+    }
+
+    private function notify_matching_needs(object $property, string $title): void {
+        foreach (BDS_Need_Matcher::find_matching_needs($property) as $need) {
+            if (empty($need->assigned_to)) continue;
+            $this->send_notification(
+                (int) $need->assigned_to,
+                'need_match',
+                'Có căn phù hợp với nhu cầu khách hàng',
+                "Căn \"{$title}\" phù hợp với nhu cầu \"" . ($need->title ?: "NCD-{$need->id}") . '"',
+                'need',
+                (int) $need->id
+            );
+        }
     }
 
     public function update_item(WP_REST_Request $request): WP_REST_Response|WP_Error {
@@ -116,7 +153,7 @@ class BDS_API_Properties extends BDS_API_Base {
         $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_properties WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
 
-        $fields = ['title', 'code', 'project_name', 'block', 'floor', 'unit_number', 'direction', 'balcony_direction', 'status', 'property_type', 'fund_type', 'component', 'standard', 'description'];
+        $fields = ['title', 'code', 'project_name', 'block', 'floor', 'unit_number', 'direction', 'balcony_direction', 'view_type', 'status', 'property_type', 'fund_type', 'component', 'standard', 'description'];
         $data = [];
         foreach ($fields as $f) {
             if ($request->has_param($f)) $data[$f] = sanitize_text_field($request->get_param($f) ?? '');
@@ -137,7 +174,41 @@ class BDS_API_Properties extends BDS_API_Base {
         BDS_Activity_Logger::log_update('property', $id, $existing->title);
 
         $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_properties WHERE id = %d", $id));
+
+        $this->notify_all_users('updated_property', 'Nhà bán đã cập nhật', "Nhà bán \"{$item->title}\" vừa được cập nhật thông tin", 'property', $id);
+        $this->notify_matching_needs($item, $item->title);
+
         return new WP_REST_Response($this->format_item($item));
+    }
+
+    public function get_similar_items(WP_REST_Request $request): WP_REST_Response|WP_Error {
+        global $wpdb;
+        $id = (int) $request['id'];
+
+        $current = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_properties WHERE id = %d", $id));
+        if (!$current) return $this->not_found();
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT *,
+                    (project_name = %s AND project_name != '') AS same_project,
+                    (property_type = %s AND property_type != '') AS same_type
+             FROM {$wpdb->prefix}bds_properties
+             WHERE id != %d
+               AND status = 'available'
+               AND (project_name = %s OR property_type = %s OR bedrooms = %d)
+             ORDER BY same_project DESC, same_type DESC, ABS(price - %f) ASC
+             LIMIT 6",
+            $current->project_name, $current->property_type, $id,
+            $current->project_name, $current->property_type, (int) $current->bedrooms,
+            (float) $current->price
+        ));
+
+        $data = array_map(function ($item) {
+            unset($item->same_project, $item->same_type);
+            return $this->format_item($item);
+        }, $rows);
+
+        return new WP_REST_Response($data);
     }
 
     public function delete_item(WP_REST_Request $request): WP_REST_Response|WP_Error {

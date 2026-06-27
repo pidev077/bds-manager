@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, SlidersHorizontal, Phone } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Plus, Search, SlidersHorizontal, Phone, Sparkles } from 'lucide-react'
 import { needsApi, customersApi } from '@/lib/api'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Need } from '@/types'
+import { formatCurrency, formatArea } from '@/lib/utils'
+import type { Need, Property } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -40,7 +41,10 @@ export default function Needs() {
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Need | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [matchingNeed, setMatchingNeed] = useState<Need | null>(null)
   const qc = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const params: Record<string, unknown> = { page, per_page: 20, search: search || undefined, processing_status: tab || undefined, tier: 'primary' }
 
@@ -83,6 +87,21 @@ export default function Needs() {
     setOpenForm(true)
   }
 
+  const { data: matchesData } = useQuery({
+    queryKey: ['need-matches', matchingNeed?.id],
+    queryFn: () => needsApi.matches(matchingNeed!.id),
+    enabled: !!matchingNeed,
+  })
+  const matchedProperties: Property[] = matchesData?.data ?? []
+
+  // Mở thẳng "Căn phù hợp" khi đến từ thông báo need_match
+  useEffect(() => {
+    const openNeedId = (location.state as { openNeedId?: number } | null)?.openNeedId
+    if (!openNeedId) return
+    needsApi.get(openNeedId).then(res => setMatchingNeed(res.data)).catch(() => {})
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location, navigate])
+
   return (
     <div>
       <div className="page-header">
@@ -111,7 +130,7 @@ export default function Needs() {
         <button className="btn-secondary gap-2"><SlidersHorizontal size={14} /> Bộ lọc / 2</button>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bds-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -164,6 +183,9 @@ export default function Needs() {
                   <td className="table-cell">
                     <div className="flex gap-2">
                       <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(n)}>Sửa</button>
+                      <button className="text-xs text-gray-500 hover:underline flex items-center gap-1" onClick={() => setMatchingNeed(n)}>
+                        <Sparkles size={12} /> Căn phù hợp
+                      </button>
                       <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(n.id)}>Xóa</button>
                     </div>
                   </td>
@@ -251,6 +273,29 @@ export default function Needs() {
         onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
       />
+
+      <Modal
+        open={!!matchingNeed}
+        onClose={() => setMatchingNeed(null)}
+        title={`Căn phù hợp với nhu cầu "${matchingNeed?.title || `NCD${matchingNeed?.id}`}"`}
+        size="lg"
+      >
+        {matchedProperties.length === 0 ? (
+          <EmptyState message="Chưa có căn nào phù hợp với nhu cầu này" />
+        ) : (
+          <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+            {matchedProperties.map(p => (
+              <div key={p.id} className="flex items-center justify-between px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{p.unit_number || p.code} - {p.title}</p>
+                  <p className="text-xs text-gray-500">{p.project_name} · {p.property_type} · {formatArea(p.area_gross)} {p.view_type ? `· View ${p.view_type}` : ''}</p>
+                </div>
+                <p className="text-sm font-medium">{formatCurrency(p.price)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

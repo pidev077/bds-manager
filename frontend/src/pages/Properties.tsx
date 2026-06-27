@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, SlidersHorizontal, ChevronRight, Link2, Clipboard } from 'lucide-react'
-import { propertiesApi } from '@/lib/api'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Plus, Search, SlidersHorizontal, ChevronRight, Link2, Clipboard, ShoppingCart } from 'lucide-react'
+import { propertiesApi, customersApi, cartApi, projectsApi } from '@/lib/api'
 import { formatArea, formatCurrency } from '@/lib/utils'
-import type { Property } from '@/types'
+import type { Property, Customer, Project } from '@/types'
 import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_COLORS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
@@ -18,12 +19,25 @@ const PROPERTY_TYPES = ['1PN', '2PN', '3PN', '4PN', '5PN', '1PN+1', '2PN+1 (1 To
 
 const DIRECTIONS = ['Đông', 'Tây', 'Nam', 'Bắc', 'Đông Nam', 'Đông Bắc', 'Tây Nam', 'Tây Bắc', 'ĐB - ĐN', 'TB - TN']
 
-const PROJECTS = ['Vinhomes Ocean Park', 'Vinhomes Golden Avenue', 'Vinhomes Green City', 'Vinhomes Hải Vân Bay', 'Vinhomes Global Gate', 'Vinhomes Golden City', 'Vinhomes Ocean Park 3', 'Vinhomes Green Paradise', 'Vinhomes Wonder City', 'Vinhomes Grand Park', 'Vinhomes Ocean Park 2']
+const VIEWS = ['Biển', 'Công viên', 'Quảng trường', 'Sông']
+
+const PRICE_RANGES = [
+  { label: 'Dưới 5 tỷ', min: undefined, max: 5_000_000_000 },
+  { label: '5-10 tỷ', min: 5_000_000_000, max: 10_000_000_000 },
+  { label: '10-20 tỷ', min: 10_000_000_000, max: 20_000_000_000 },
+  { label: 'Trên 20 tỷ', min: 20_000_000_000, max: undefined },
+]
+
+const AREA_RANGES = [
+  { label: 'Dưới 80m²', min: undefined, max: 80 },
+  { label: '80-120m²', min: 80, max: 120 },
+  { label: 'Trên 120m²', min: 120, max: undefined },
+]
 
 type FormData = {
   title: string; code: string; project_name: string; block: string; floor: string
   unit_number: string; area_gross: number; area_net: number; bedrooms: number
-  bathrooms: number; direction: string; balcony_direction: string; price: number
+  bathrooms: number; direction: string; balcony_direction: string; view_type: string; price: number
   property_type: string; fund_type: string; status: string; component: string; standard: string; description: string
 }
 
@@ -33,13 +47,51 @@ export default function Properties() {
   const [filterProject, setFilterProject] = useState('')
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterPriceRange, setFilterPriceRange] = useState<number | null>(null)
+  const [filterAreaRange, setFilterAreaRange] = useState<number | null>(null)
+  const [filterView, setFilterView] = useState('')
   const [typeTab, setTypeTab] = useState('all')
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Property | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [cartTarget, setCartTarget] = useState<Property | null>(null)
+  const [cartCustomerId, setCartCustomerId] = useState<number>(0)
+  const [viewing, setViewing] = useState<Property | null>(null)
   const qc = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  const params = { page, per_page: 20, search: search || undefined, project_name: filterProject || undefined, property_type: typeTab !== 'all' ? typeTab : (filterType || undefined), status: filterStatus || undefined }
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectsApi.list(),
+  })
+  const projects: Project[] = projectsData?.data ?? []
+
+  const { data: customersData } = useQuery({
+    queryKey: ['customers-select'],
+    queryFn: () => customersApi.list({ per_page: 200 }),
+    enabled: !!cartTarget,
+  })
+  const customers: Customer[] = customersData?.data ?? []
+
+  const addToCartMutation = useMutation({
+    mutationFn: () => cartApi.add({ customer_id: cartCustomerId, property_id: cartTarget!.id }),
+    onSuccess: () => { toast.success('Đã thêm vào giỏ hàng'); setCartTarget(null); setCartCustomerId(0) },
+    onError: () => toast.error('Có lỗi xảy ra!'),
+  })
+
+  const priceRange = filterPriceRange !== null ? PRICE_RANGES[filterPriceRange] : undefined
+  const areaRange = filterAreaRange !== null ? AREA_RANGES[filterAreaRange] : undefined
+
+  const params = {
+    page, per_page: 20, search: search || undefined,
+    project_name: filterProject || undefined,
+    property_type: typeTab !== 'all' ? typeTab : (filterType || undefined),
+    status: filterStatus || undefined,
+    view_type: filterView || undefined,
+    price_min: priceRange?.min, price_max: priceRange?.max,
+    area_min: areaRange?.min, area_max: areaRange?.max,
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['properties', params],
@@ -49,6 +101,13 @@ export default function Properties() {
   const properties: Property[] = data?.data ?? []
   const total = parseInt(data?.headers?.['x-wp-total'] ?? '0')
   const totalPages = parseInt(data?.headers?.['x-wp-totalpages'] ?? '1')
+
+  const { data: similarData } = useQuery({
+    queryKey: ['similar-properties', viewing?.id],
+    queryFn: () => propertiesApi.similar(viewing!.id),
+    enabled: !!viewing,
+  })
+  const similarProperties: Property[] = similarData?.data ?? []
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>()
 
@@ -74,31 +133,36 @@ export default function Properties() {
 
   const handleAdd = () => { setEditing(null); reset({ fund_type: 'F0', status: 'available', bedrooms: 0, bathrooms: 0 }); setOpenForm(true) }
 
-  // Project counts for sidebar
-  const projectCounts = PROJECTS.reduce((acc, p) => ({ ...acc, [p]: 0 }), {} as Record<string, number>)
+  // Mở thẳng chi tiết căn khi đến từ thông báo new_property/updated_property
+  useEffect(() => {
+    const openPropertyId = (location.state as { openPropertyId?: number } | null)?.openPropertyId
+    if (!openPropertyId) return
+    propertiesApi.get(openPropertyId).then(res => setViewing(res.data)).catch(() => {})
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location, navigate])
 
   return (
     <div className="flex gap-4">
       {/* Sidebar - Projects */}
       <div className="w-56 shrink-0">
-        <div className="card">
+        <div className="bds-card">
           <div className="px-3 py-2.5 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quỹ căn sơ cấp</p>
             <p className="text-xs text-gray-400 mt-0.5">Danh sách quỹ căn sơ cấp của tôi</p>
           </div>
           <div className="px-2 py-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-2">DANH SÁCH QUỸ CĂN</p>
-            {PROJECTS.map(proj => (
+            {projects.map(proj => (
               <button
-                key={proj}
-                onClick={() => setFilterProject(filterProject === proj ? '' : proj)}
-                className={`flex items-center justify-between w-full text-left px-2 py-2 rounded text-xs transition-colors ${filterProject === proj ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}
+                key={proj.id}
+                onClick={() => setFilterProject(filterProject === proj.name ? '' : proj.name)}
+                className={`flex items-center justify-between w-full text-left px-2 py-2 rounded text-xs transition-colors ${filterProject === proj.name ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}
               >
                 <span className="flex items-center gap-1">
-                  <ChevronRight size={12} className={`transition-transform ${filterProject === proj ? 'rotate-90' : ''}`} />
-                  {proj}
+                  <ChevronRight size={12} className={`transition-transform ${filterProject === proj.name ? 'rotate-90' : ''}`} />
+                  {proj.name}
                 </span>
-                <span className="text-gray-400">{projectCounts[proj] || ''}</span>
+                <span className="text-gray-400">{proj.property_count || ''}</span>
               </button>
             ))}
           </div>
@@ -117,7 +181,7 @@ export default function Properties() {
         </div>
 
         {/* Type tabs */}
-        <div className="tab-nav overflow-x-auto flex-nowrap">
+        <div className="tab-nav overflow-x-auto flex-nowrap scrollbar-none">
           <button className={`tab-item shrink-0 ${typeTab === 'all' ? 'active' : ''}`} onClick={() => setTypeTab('all')}>
             Tất cả <span className="ml-1 text-gray-400">{total}</span>
           </button>
@@ -129,7 +193,7 @@ export default function Properties() {
         </div>
 
         {/* Filter bar */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input className="input pl-9 w-48" placeholder="Tìm kiếm" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
@@ -137,14 +201,56 @@ export default function Properties() {
           <button className="btn-secondary gap-2">
             <SlidersHorizontal size={14} /> Bộ lọc
           </button>
-          <select className="input w-40" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <select className="input w-44 shrink-0" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">Tất cả trạng thái</option>
             {Object.entries(PROPERTY_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
 
+        {/* Quick filters: Giá / Diện tích / View */}
+        <div className="bds-card flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2.5 mb-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-400 shrink-0">Giá:</span>
+            {PRICE_RANGES.map((r, i) => (
+              <button
+                key={r.label}
+                className={`filter-chip ${filterPriceRange === i ? 'active' : ''}`}
+                onClick={() => { setFilterPriceRange(filterPriceRange === i ? null : i); setPage(1) }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-400 shrink-0">Diện tích:</span>
+            {AREA_RANGES.map((r, i) => (
+              <button
+                key={r.label}
+                className={`filter-chip ${filterAreaRange === i ? 'active' : ''}`}
+                onClick={() => { setFilterAreaRange(filterAreaRange === i ? null : i); setPage(1) }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-400 shrink-0">View:</span>
+            {VIEWS.map(v => (
+              <button
+                key={v}
+                className={`filter-chip ${filterView === v ? 'active' : ''}`}
+                onClick={() => { setFilterView(filterView === v ? '' : v); setPage(1) }}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Table */}
-        <div className="card overflow-hidden">
+        <div className="bds-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -164,7 +270,7 @@ export default function Properties() {
                     <td className="table-cell">
                       <div className="flex items-center gap-1.5">
                         <Link2 size={12} className="text-blue-400 cursor-pointer shrink-0" />
-                        <span className="font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleEdit(p)}>
+                        <span className="font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => setViewing(p)}>
                           {p.unit_number || p.code || `#${p.id}`}
                         </span>
                       </div>
@@ -196,6 +302,9 @@ export default function Properties() {
                     <td className="table-cell">
                       <div className="flex gap-2">
                         <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(p)}>Sửa</button>
+                        <button className="text-xs text-gray-500 hover:underline flex items-center gap-1" onClick={() => setCartTarget(p)}>
+                          <ShoppingCart size={12} /> Thêm vào giỏ
+                        </button>
                         <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(p.id)}>Xóa</button>
                       </div>
                     </td>
@@ -237,7 +346,7 @@ export default function Properties() {
             <label className="label">Dự án</label>
             <select className="input" {...register('project_name')}>
               <option value="">-- Chọn dự án --</option>
-              {PROJECTS.map(p => <option key={p} value={p}>{p}</option>)}
+              {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div>
@@ -286,6 +395,13 @@ export default function Properties() {
             </select>
           </div>
           <div>
+            <label className="label">View</label>
+            <select className="input" {...register('view_type')}>
+              <option value="">-- Chọn view --</option>
+              {VIEWS.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="label">Giá bán (VNĐ)</label>
             <input className="input" type="number" {...register('price', { valueAsNumber: true })} placeholder="0" />
           </div>
@@ -320,6 +436,85 @@ export default function Properties() {
         loading={deleteMutation.isPending}
         message="Bạn có chắc muốn xóa nhà bán này? Hành động không thể hoàn tác."
       />
+
+      <Modal
+        open={!!cartTarget}
+        onClose={() => { setCartTarget(null); setCartCustomerId(0) }}
+        title="Thêm vào giỏ hàng"
+        size="sm"
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => { setCartTarget(null); setCartCustomerId(0) }}>Hủy</button>
+            <button className="btn-primary" disabled={!cartCustomerId || addToCartMutation.isPending} onClick={() => addToCartMutation.mutate()}>
+              {addToCartMutation.isPending ? 'Đang thêm...' : 'Thêm vào giỏ'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-gray-600 mb-3">Căn: <span className="font-medium text-gray-800">{cartTarget?.code || cartTarget?.unit_number} - {cartTarget?.title}</span></p>
+        <label className="label">Chọn khách hàng</label>
+        <select className="input" value={cartCustomerId} onChange={e => setCartCustomerId(Number(e.target.value))}>
+          <option value={0}>-- Chọn khách hàng --</option>
+          {customers.map(c => <option key={c.id} value={c.id}>{c.full_name} {c.phone ? `- ${c.phone}` : ''}</option>)}
+        </select>
+      </Modal>
+
+      {/* Detail + Similar properties Modal */}
+      <Modal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title={`Chi tiết căn ${viewing?.unit_number || viewing?.code || ''}`}
+        size="xl"
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setViewing(null)}>Đóng</button>
+            <button className="btn-primary" onClick={() => { if (viewing) { handleEdit(viewing); setViewing(null) } }}>Sửa căn này</button>
+          </>
+        }
+      >
+        {viewing && (
+          <div>
+            <div className="grid grid-cols-3 gap-3 text-sm mb-5">
+              <div><p className="text-gray-400 text-xs">Tiêu đề</p><p className="font-medium">{viewing.title}</p></div>
+              <div><p className="text-gray-400 text-xs">Dự án</p><p className="font-medium">{viewing.project_name || '--'}</p></div>
+              <div><p className="text-gray-400 text-xs">Tòa / Tầng</p><p className="font-medium">{viewing.block || '--'} / {viewing.floor || '--'}</p></div>
+              <div><p className="text-gray-400 text-xs">Loại căn</p><p className="font-medium">{viewing.property_type || '--'}</p></div>
+              <div><p className="text-gray-400 text-xs">DT tim tường / thông thủy</p><p className="font-medium">{formatArea(viewing.area_gross)} / {formatArea(viewing.area_net)}</p></div>
+              <div><p className="text-gray-400 text-xs">PN / Toilet</p><p className="font-medium">{viewing.bedrooms || '--'} / {viewing.bathrooms || '--'}</p></div>
+              <div><p className="text-gray-400 text-xs">Hướng cửa / ban công</p><p className="font-medium">{viewing.direction || '--'} / {viewing.balcony_direction || '--'}</p></div>
+              <div><p className="text-gray-400 text-xs">View</p><p className="font-medium">{viewing.view_type || '--'}</p></div>
+              <div><p className="text-gray-400 text-xs">Giá bán</p><p className="font-medium">{formatCurrency(viewing.price)}</p></div>
+              <div><p className="text-gray-400 text-xs">Trạng thái</p><Badge label={PROPERTY_STATUS_LABELS[viewing.status] ?? viewing.status} color={PROPERTY_STATUS_COLORS[viewing.status] as never ?? 'gray'} dot /></div>
+            </div>
+            {viewing.description && (
+              <div className="mb-5">
+                <p className="text-gray-400 text-xs mb-1">Mô tả</p>
+                <p className="text-sm text-gray-700">{viewing.description}</p>
+              </div>
+            )}
+
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sản phẩm tương tự</p>
+            {similarProperties.length === 0 ? (
+              <EmptyState message="Không có sản phẩm tương tự" />
+            ) : (
+              <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+                {similarProperties.map(sp => (
+                  <div key={sp.id} className="flex items-center justify-between px-3 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{sp.unit_number || sp.code} - {sp.title}</p>
+                      <p className="text-xs text-gray-500">{sp.project_name} · {sp.property_type} · {formatArea(sp.area_gross)} {sp.view_type ? `· View ${sp.view_type}` : ''}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{formatCurrency(sp.price)}</p>
+                      <button className="text-xs text-blue-500 hover:underline" onClick={() => setViewing(sp)}>Xem</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

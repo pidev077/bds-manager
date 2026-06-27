@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, User, LogOut, BarChart2, Activity, Users, LayoutGrid } from 'lucide-react'
+import { Bell, ChevronDown, User, LogOut, BarChart2, Activity, Users, LayoutGrid, Home, ShoppingCart, FileText, Building2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -32,6 +33,10 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Khác',
     adminOnly: true,
     dropdown: [
+      { label: 'Chủ nhà', to: '/property-owners', icon: Home },
+      { label: 'Giỏ hàng', to: '/cart', icon: ShoppingCart },
+      { label: 'Kho tài liệu', to: '/documents', icon: FileText },
+      { label: 'Quản lý dự án', to: '/project-management', icon: Building2 },
       { label: 'Báo cáo KPI', to: '/kpi', icon: BarChart2 },
       { label: 'Nhật ký hoạt động', to: '/activity', icon: Activity },
       { label: 'Quản lý nhân viên', to: '/users', icon: Users },
@@ -43,6 +48,7 @@ export default function Navbar() {
   const user = useAuthStore(s => s.user)
   const { unreadCount, setUnreadCount } = useNotificationStore()
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
   const [showNotif, setShowNotif] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const navigate = useNavigate()
@@ -95,7 +101,7 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex items-center gap-2 mr-4 shrink-0 cursor-pointer" onClick={() => navigate('/tasks')}>
             <LayoutGrid size={20} className="text-brand" />
-            <span className="font-bold text-base text-gray-800 hidden sm:block">VINHOMES AGENT</span>
+            <span className="font-bold text-base text-gray-800 hidden sm:block">QT AGENT</span>
           </div>
 
           {/* Nav items */}
@@ -108,13 +114,26 @@ export default function Navbar() {
                   <div key={item.label} className="relative shrink-0" onClick={e => e.stopPropagation()}>
                     <button
                       className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md whitespace-nowrap transition-colors"
-                      onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
+                      onClick={e => {
+                        if (openDropdown === item.label) {
+                          setOpenDropdown(null)
+                          return
+                        }
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const left = Math.min(rect.left, window.innerWidth - 180 - 8)
+                        setDropdownPos({ top: rect.bottom + 4, left })
+                        setOpenDropdown(item.label)
+                      }}
                     >
                       {item.label}
                       <ChevronDown size={14} className={`transition-transform ${openDropdown === item.label ? 'rotate-180' : ''}`} />
                     </button>
-                    {openDropdown === item.label && (
-                      <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px] z-50">
+                    {openDropdown === item.label && dropdownPos && createPortal(
+                      <div
+                        className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px] z-50"
+                        style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                        onClick={e => e.stopPropagation()}
+                      >
                         {item.dropdown.map(sub => (
                           <button
                             key={sub.to}
@@ -125,7 +144,8 @@ export default function Navbar() {
                             {sub.label}
                           </button>
                         ))}
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                 )
@@ -181,7 +201,12 @@ export default function Navbar() {
                       <div
                         key={n.id}
                         className={`flex gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}
-                        onClick={() => { if (!n.is_read) markReadMutation.mutate(n.id) }}
+                        onClick={() => {
+                          if (!n.is_read) markReadMutation.mutate(n.id)
+                          setShowNotif(false)
+                          if (n.object_type === 'property') navigate('/properties', { state: { openPropertyId: n.object_id } })
+                          else if (n.object_type === 'need') navigate('/needs', { state: { openNeedId: n.object_id } })
+                        }}
                       >
                         <div className="w-2 h-2 rounded-full bg-brand mt-1.5 shrink-0 opacity-0 [&.unread]:opacity-100"
                              style={{ opacity: n.is_read ? 0 : 1 }} />

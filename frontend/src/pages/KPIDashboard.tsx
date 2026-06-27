@@ -23,7 +23,7 @@ interface KPICardProps {
 
 function KPICard({ icon: Icon, label, value, color }: KPICardProps) {
   return (
-    <div className={`card p-5 border-l-4 ${color}`}>
+    <div className={`bds-card p-5 border-l-4 ${color}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
@@ -95,7 +95,7 @@ export default function KPIDashboard() {
 
             {/* Trend chart */}
             {myKpi.trend && myKpi.trend.length > 0 && (
-              <div className="card p-5">
+              <div className="bds-card p-5">
                 <h3 className="font-medium text-gray-700 mb-4">Xu hướng 6 tháng gần nhất</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={myKpi.trend}>
@@ -123,7 +123,7 @@ export default function KPIDashboard() {
             <>
               {/* Chart */}
               {summary.length > 0 && (
-                <div className="card p-5 mb-4">
+                <div className="bds-card p-5 mb-4">
                   <h3 className="font-medium text-gray-700 mb-4">Số giao dịch theo nhân viên</h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={summary.slice(0, 10)} layout="vertical">
@@ -139,7 +139,7 @@ export default function KPIDashboard() {
               )}
 
               {/* Table */}
-              <div className="card overflow-hidden">
+              <div className="bds-card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>

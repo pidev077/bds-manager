@@ -76,7 +76,7 @@ export default function UserManagement() {
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bds-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
