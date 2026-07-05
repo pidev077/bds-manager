@@ -57,12 +57,12 @@ export default function Dashboard() {
         <StatCard icon={Building2}    label="Quỹ căn sơ cấp"      value={stats.primary_count}     color="border-blue-500"  onClick={() => navigate('/properties', { state: { filterFundType: 'F0' } })} />
         <StatCard icon={Building2}    label="Quỹ căn thứ cấp"     value={stats.secondary_count}    color="border-indigo-500" onClick={() => navigate('/properties', { state: { filterFundType: 'F1' } })} />
         <StatCard icon={Home}         label="Tổng sản phẩm"       value={stats.total_properties}   color="border-gray-400"  onClick={() => navigate('/properties')} />
-        <StatCard icon={CheckCircle2} label="Đang bán/cho thuê"   value={stats.available_count}    color="border-green-500" onClick={() => navigate('/properties')} />
-        <StatCard icon={XCircle}      label="Ngưng bán/cho thuê"  value={stats.cancelled_count}    color="border-gray-400"  onClick={() => navigate('/properties')} />
-        <StatCard icon={PackageCheck} label="Đã bán/cho thuê"     value={stats.sold_count}         color="border-red-500"   onClick={() => navigate('/properties')} />
-        <StatCard icon={Sparkles}     label="Sản phẩm mới hôm nay" value={stats.new_today_count}   color="border-purple-500" onClick={() => navigate('/properties')} />
-        <StatCard icon={Users}        label="Khách đang cần xử lý" value={stats.needs_pending_count} color="border-yellow-500" onClick={() => navigate('/tasks')} />
-        <StatCard icon={CalendarClock} label="Lịch hẹn hôm nay"   value={stats.appointments_today_count} color="border-orange-500" onClick={() => navigate('/appointments')} />
+        <StatCard icon={CheckCircle2} label="Đang bán/cho thuê"   value={stats.available_count}    color="border-green-500" onClick={() => navigate('/properties', { state: { filterStatus: 'available' } })} />
+        <StatCard icon={XCircle}      label="Ngưng bán/cho thuê"  value={stats.cancelled_count}    color="border-gray-400"  onClick={() => navigate('/properties', { state: { filterStatus: 'cancelled' } })} />
+        <StatCard icon={PackageCheck} label="Đã bán/cho thuê"     value={stats.sold_count}         color="border-red-500"   onClick={() => navigate('/properties', { state: { filterStatus: 'sold' } })} />
+        <StatCard icon={Sparkles}     label="Sản phẩm mới hôm nay" value={stats.new_today_count}   color="border-purple-500" onClick={() => navigate('/properties', { state: { filterCreatedToday: true } })} />
+        <StatCard icon={Users}        label="Khách đang cần xử lý" value={stats.needs_pending_count} color="border-yellow-500" onClick={() => navigate('/tasks', { state: { filterTab: 'active' } })} />
+        <StatCard icon={CalendarClock} label="Lịch hẹn hôm nay"   value={stats.appointments_today_count} color="border-orange-500" onClick={() => navigate('/appointments', { state: { filterDate: 'today' } })} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

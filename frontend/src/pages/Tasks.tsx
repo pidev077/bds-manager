@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, SlidersHorizontal, ArrowUpDown, Download } from 'lucide-react'
 import { needsApi, customersApi, usersApi } from '@/lib/api'
@@ -59,6 +60,15 @@ export default function Tasks() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAdminOrManager = !!(user?.is_admin || user?.is_manager)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const state = location.state as { filterTab?: string } | null
+    if (!state) return
+    if (state.filterTab !== undefined) setTab(state.filterTab)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location, navigate])
 
   const { data, isLoading } = useQuery({
     queryKey: ['tasks-needs', tab, assignedTo],

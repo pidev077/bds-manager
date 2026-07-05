@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { appointmentsApi, customersApi } from '@/lib/api'
@@ -45,13 +46,23 @@ export default function Appointments() {
   const [search, setSearch] = useState('')
   const [statusTab, setStatusTab] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
+  const [filterDate, setFilterDate] = useState('')
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Appointment | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  const params: Record<string, unknown> = { page, per_page: 20, status: statusTab || undefined, type: typeFilter || undefined }
+  useEffect(() => {
+    const state = location.state as { filterDate?: string } | null
+    if (!state) return
+    if (state.filterDate !== undefined) { setFilterDate(state.filterDate); setPage(1) }
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location, navigate])
+
+  const params: Record<string, unknown> = { page, per_page: 20, status: statusTab || undefined, type: typeFilter || undefined, date: filterDate || undefined }
 
   const { data, isLoading } = useQuery({
     queryKey: ['appointments', params],
@@ -140,6 +151,15 @@ export default function Appointments() {
             <input className="input pl-9 w-52" placeholder="Tìm kiếm" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
           </div>
           <button className="btn-secondary gap-2"><SlidersHorizontal size={14} /> Bộ lọc</button>
+          {filterDate === 'today' && (
+            <button
+              className="filter-chip active gap-1"
+              onClick={() => { setFilterDate(''); setPage(1) }}
+              title="Bỏ lọc lịch hẹn hôm nay"
+            >
+              Hôm nay ✕
+            </button>
+          )}
         </div>
 
         <div className="bds-card overflow-hidden">

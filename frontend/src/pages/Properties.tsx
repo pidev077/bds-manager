@@ -57,6 +57,7 @@ export default function Properties() {
   const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterFundType, setFilterFundType] = useState('')
+  const [filterCreatedToday, setFilterCreatedToday] = useState(false)
   const [filterPriceRange, setFilterPriceRange] = useState<number | null>(null)
   const [filterAreaRange, setFilterAreaRange] = useState<number | null>(null)
   const [filterView, setFilterView] = useState('')
@@ -100,6 +101,7 @@ export default function Properties() {
     property_type: typeTab !== 'all' ? typeTab : (filterType || undefined),
     status: filterStatus || undefined,
     fund_type: filterFundType || undefined,
+    created_today: filterCreatedToday || undefined,
     property_category: filterCategory || undefined,
     view_type: filterView || undefined,
     price_min: priceRange?.min, price_max: priceRange?.max,
@@ -148,13 +150,14 @@ export default function Properties() {
 
   // Mở thẳng chi tiết căn khi đến từ thông báo new_property/updated_property
   useEffect(() => {
-    const state = location.state as { openPropertyId?: number; filterFundType?: string; filterStatus?: string } | null
+    const state = location.state as { openPropertyId?: number; filterFundType?: string; filterStatus?: string; filterCreatedToday?: boolean } | null
     if (!state) return
     if (state.openPropertyId) {
       propertiesApi.get(state.openPropertyId).then(res => setViewing(res.data)).catch(() => {})
     }
     if (state.filterFundType !== undefined) { setFilterFundType(state.filterFundType); setPage(1) }
     if (state.filterStatus !== undefined) { setFilterStatus(state.filterStatus); setPage(1) }
+    if (state.filterCreatedToday !== undefined) { setFilterCreatedToday(state.filterCreatedToday); setPage(1) }
     navigate(location.pathname, { replace: true, state: null })
   }, [location, navigate])
 
@@ -227,6 +230,15 @@ export default function Properties() {
             <option value="F0">Quỹ sơ cấp (F0)</option>
             <option value="F1">Quỹ thứ cấp (F1)</option>
           </select>
+          {filterCreatedToday && (
+            <button
+              className="filter-chip active gap-1"
+              onClick={() => { setFilterCreatedToday(false); setPage(1) }}
+              title="Bỏ lọc sản phẩm mới hôm nay"
+            >
+              Mới hôm nay ✕
+            </button>
+          )}
         </div>
 
         {/* Quick filters: Loại hình / Giá / Diện tích / View */}

@@ -37,6 +37,11 @@ class BDS_API_Appointments extends BDS_API_Base {
             $vals[]  = (int) $request->get_param('customer_id');
         }
 
+        if ($request->get_param('date') === 'today') {
+            $where[] = 'DATE(appointment_date) = %s';
+            $vals[]  = current_time('Y-m-d');
+        }
+
         $resp = $this->paginate($request, 'bds_appointments', $where, $vals, 'ORDER BY appointment_date DESC, created_at DESC');
         $data = array_map(function ($item) {
             global $wpdb;

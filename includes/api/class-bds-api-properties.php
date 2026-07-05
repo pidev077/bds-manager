@@ -49,6 +49,13 @@ class BDS_API_Properties extends BDS_API_Base {
             }
         }
 
+        if ($request->get_param('created_today')) {
+            $today = current_time('Y-m-d');
+            $where[] = '(DATE(created_at) = %s OR DATE(updated_at) = %s)';
+            $vals[]  = $today;
+            $vals[]  = $today;
+        }
+
         // Loại hình (nhóm căn hộ / nhà phố / shophouse / biệt thự) — gộp nhiều property_type cụ thể
         $category = sanitize_text_field($request->get_param('property_category') ?? '');
         if ($category && isset(self::PROPERTY_CATEGORIES[$category])) {
