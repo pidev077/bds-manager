@@ -56,6 +56,7 @@ class BDS_API_Deposits extends BDS_API_Base {
         global $wpdb;
         $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_deposits WHERE id = %d", (int) $request['id']));
         if (!$item) return $this->not_found();
+        if (!$this->can_access_record($item)) return $this->forbidden();
         return new WP_REST_Response($this->format_item($item));
     }
 
@@ -101,6 +102,7 @@ class BDS_API_Deposits extends BDS_API_Base {
         $id = (int) $request['id'];
         $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_deposits WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
+        if (!$this->can_access_record($existing)) return $this->forbidden();
 
         $data = [];
         foreach (['name', 'campaign', 'project', 'zone', 'activity_status', 'booking_status', 'property_type', 'specific_request', 'notes'] as $f) {
@@ -124,6 +126,7 @@ class BDS_API_Deposits extends BDS_API_Base {
         global $wpdb;
         $id = (int) $request['id'];
         if (!$wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}bds_deposits WHERE id = %d", $id))) return $this->not_found();
+        if (!BDS_Roles::is_admin()) return $this->forbidden();
         $wpdb->delete($wpdb->prefix . 'bds_deposits', ['id' => $id], ['%d']);
         BDS_Activity_Logger::log_delete('deposit', $id);
         return new WP_REST_Response(['deleted' => true, 'id' => $id]);

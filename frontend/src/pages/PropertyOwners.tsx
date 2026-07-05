@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search } from 'lucide-react'
 import { propertyOwnersApi, propertiesApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import { formatCurrency } from '@/lib/utils'
 import type { PropertyOwner, Property } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
@@ -23,6 +24,7 @@ export default function PropertyOwners() {
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<PropertyOwner | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -112,7 +114,7 @@ export default function PropertyOwners() {
                   <td className="table-cell">
                     <div className="flex gap-2">
                       <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(o)}>Sửa</button>
-                      <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(o.id)}>Xóa</button>
+                      {isAdmin && <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(o.id)}>Xóa</button>}
                     </div>
                   </td>
                 </tr>

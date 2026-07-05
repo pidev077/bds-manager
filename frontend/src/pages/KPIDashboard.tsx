@@ -63,7 +63,7 @@ export default function KPIDashboard() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Báo cáo KPI</h1>
+        <h1 className="page-title">Báo cáo Sale</h1>
         <div className="flex items-center gap-2">
           {PERIODS.map(p => (
             <button
@@ -84,13 +84,18 @@ export default function KPIDashboard() {
           <LoadingState rows={2} />
         ) : myKpi ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-5">
-              <KPICard icon={Home}       label="Nhà bán đã nhập"    value={myKpi.properties}         color="border-blue-500" />
-              <KPICard icon={Users}      label="Khách hàng mới"     value={myKpi.customers}          color="border-green-500" />
-              <KPICard icon={Target}     label="Nhu cầu mua"        value={myKpi.needs}              color="border-purple-500" />
-              <KPICard icon={Calendar}   label="Lịch hẹn"           value={`${myKpi.appointments_done}/${myKpi.appointments_total}`} color="border-yellow-500" />
-              <KPICard icon={TrendingUp} label="Giao dịch"          value={myKpi.transactions}       color="border-orange-500" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-3">
+              <KPICard icon={Users}      label="Khách mới"          value={myKpi.customers}          color="border-green-500" />
+              <KPICard icon={Target}     label="Khách tiềm năng"    value={myKpi.needs}              color="border-purple-500" />
+              <KPICard icon={Calendar}   label="Khách xem nhà"      value={myKpi.site_visit_done}    color="border-yellow-500" />
+              <KPICard icon={Home}       label="Đặt cọc"            value={myKpi.deposits}           color="border-blue-500" />
+              <KPICard icon={TrendingUp} label="Giao dịch thành công" value={myKpi.transactions}     color="border-orange-500" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-5">
+              <KPICard icon={Home}       label="Nhà bán đã nhập"    value={myKpi.properties}         color="border-gray-400" />
+              <KPICard icon={Calendar}   label="Lịch hẹn"           value={`${myKpi.appointments_done}/${myKpi.appointments_total}`} color="border-gray-400" />
               <KPICard icon={DollarSign} label="Giá trị GD"         value={formatCurrency(myKpi.transaction_value)} color="border-red-500" />
+              <KPICard icon={DollarSign} label="Hoa hồng"           value={formatCurrency(myKpi.commission)} color="border-red-400" />
             </div>
 
             {/* Trend chart */}
@@ -144,7 +149,7 @@ export default function KPIDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr>
-                        {['Nhân viên', 'Vai trò', 'Nhà bán', 'Khách hàng', 'Nhu cầu', 'Lịch hẹn', 'Giao dịch', 'Giá trị GD', 'Hoa hồng'].map(h => (
+                        {['Nhân viên', 'Vai trò', 'Khách mới', 'Khách tiềm năng', 'Đặt cọc', 'Lịch hẹn', 'Giao dịch', 'Giá trị GD', 'Hoa hồng'].map(h => (
                           <th key={h} className="table-header">{h}</th>
                         ))}
                       </tr>
@@ -157,9 +162,9 @@ export default function KPIDashboard() {
                             <p className="text-xs text-gray-400">{k.user_email}</p>
                           </td>
                           <td className="table-cell text-gray-500">{k.role}</td>
-                          <td className="table-cell text-center font-medium">{k.properties}</td>
                           <td className="table-cell text-center font-medium text-green-600">{k.customers}</td>
                           <td className="table-cell text-center">{k.needs}</td>
+                          <td className="table-cell text-center">{k.deposits}</td>
                           <td className="table-cell text-center">{k.appointments_done}/{k.appointments_total}</td>
                           <td className="table-cell text-center font-medium text-orange-600">{k.transactions}</td>
                           <td className="table-cell font-medium text-gray-700">{formatCurrency(k.transaction_value)}</td>

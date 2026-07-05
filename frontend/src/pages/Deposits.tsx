@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { depositsApi, customersApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Deposit } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
@@ -27,6 +28,7 @@ export default function Deposits() {
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Deposit | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -125,7 +127,7 @@ export default function Deposits() {
                   <td className="table-cell">
                     <div className="flex gap-2">
                       <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(d)}>Sửa</button>
-                      <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(d.id)}>Xóa</button>
+                      {isAdmin && <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(d.id)}>Xóa</button>}
                     </div>
                   </td>
                 </tr>

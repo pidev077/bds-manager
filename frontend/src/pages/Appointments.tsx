@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { appointmentsApi, customersApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import { formatDateTime } from '@/lib/utils'
 import type { Appointment } from '@/types'
 import { APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS } from '@/types'
@@ -47,6 +48,7 @@ export default function Appointments() {
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Appointment | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
 
   const params: Record<string, unknown> = { page, per_page: 20, status: statusTab || undefined, type: typeFilter || undefined }
@@ -180,7 +182,7 @@ export default function Appointments() {
                     <td className="table-cell">
                       <div className="flex gap-2">
                         <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(a)}>Sửa</button>
-                        <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(a.id)}>Xóa</button>
+                        {isAdmin && <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(a.id)}>Xóa</button>}
                       </div>
                     </td>
                   </tr>

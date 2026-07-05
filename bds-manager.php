@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BDS_VERSION', '1.4.0');
+define('BDS_VERSION', '1.5.0');
 define('BDS_PLUGIN_FILE', __FILE__);
 define('BDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BDS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -35,6 +35,7 @@ require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-cart.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-documents.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-care-logs.php';
 require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-projects.php';
+require_once BDS_PLUGIN_DIR . 'includes/api/class-bds-api-dashboard.php';
 
 function bds_seed_default_projects() {
     global $wpdb;
@@ -80,6 +81,7 @@ add_action('rest_api_init', function () {
     (new BDS_API_Documents())->register_routes();
     (new BDS_API_Care_Logs())->register_routes();
     (new BDS_API_Projects())->register_routes();
+    (new BDS_API_Dashboard())->register_routes();
 });
 
 add_action('admin_menu', function () {

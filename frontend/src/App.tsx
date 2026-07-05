@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from '@/components/layout/MainLayout'
+import Dashboard from '@/pages/Dashboard'
 import Tasks from '@/pages/Tasks'
 import Customers from '@/pages/Customers'
 import Properties from '@/pages/Properties'
@@ -15,12 +16,13 @@ import PropertyOwners from '@/pages/PropertyOwners'
 import Cart from '@/pages/Cart'
 import DocumentRepository from '@/pages/DocumentRepository'
 import ProjectManagement from '@/pages/ProjectManagement'
+import CareLogTimeline from '@/pages/CareLogTimeline'
 import { useAuthStore } from '@/store/authStore'
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const user = useAuthStore(s => s.user)
   if (!user) return <Navigate to="/" replace />
-  if (adminOnly && !user.is_admin && !user.is_manager) return <Navigate to="/tasks" replace />
+  if (adminOnly && !user.is_admin && !user.is_manager) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -29,7 +31,8 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Navigate to="/tasks" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="customers" element={<Customers />} />
           <Route path="properties" element={<Properties />} />
@@ -40,10 +43,9 @@ export default function App() {
           <Route path="property-owners" element={<PropertyOwners />} />
           <Route path="cart" element={<Cart />} />
           <Route path="documents" element={<DocumentRepository />} />
+          <Route path="care-logs" element={<CareLogTimeline />} />
           <Route path="sale-management" element={<SaleManagement />} />
-          <Route path="kpi" element={
-            <ProtectedRoute adminOnly><KPIDashboard /></ProtectedRoute>
-          } />
+          <Route path="kpi" element={<KPIDashboard />} />
           <Route path="activity" element={
             <ProtectedRoute adminOnly><ActivityLog /></ProtectedRoute>
           } />
@@ -53,7 +55,7 @@ export default function App() {
           <Route path="project-management" element={
             <ProtectedRoute adminOnly><ProjectManagement /></ProtectedRoute>
           } />
-          <Route path="*" element={<Navigate to="/tasks" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </HashRouter>

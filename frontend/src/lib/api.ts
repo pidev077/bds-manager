@@ -182,5 +182,10 @@ export const projectsApi = {
   delete: (id: number) => api.delete(`/projects/${id}`),
 }
 
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+export const dashboardApi = {
+  stats: () => api.get('/dashboard/stats'),
+}
+
 export { parseError }
 export default api

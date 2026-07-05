@@ -86,6 +86,11 @@ class BDS_API_KPI extends BDS_API_Base {
             $user_id, $df, $dt
         ));
 
+        $site_visit_done = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$p}bds_appointments WHERE created_by = %d AND type = 'site_visit' AND status = 'completed' AND created_at BETWEEN %s AND %s",
+            $user_id, $df, $dt
+        ));
+
         $deposits = (int) $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$p}bds_deposits WHERE created_by = %d AND created_at BETWEEN %s AND %s",
             $user_id, $df, $dt
@@ -131,6 +136,7 @@ class BDS_API_KPI extends BDS_API_Base {
             'needs'              => $needs,
             'appointments_total' => $appointments_total,
             'appointments_done'  => $appointments_done,
+            'site_visit_done'    => $site_visit_done,
             'deposits'           => $deposits,
             'transactions'       => $transactions,
             'transaction_value'  => $transaction_value,

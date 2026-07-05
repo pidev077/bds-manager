@@ -74,6 +74,22 @@ abstract class BDS_API_Base {
         }
     }
 
+    protected function can_access_record($row): bool {
+        $uid = get_current_user_id();
+        if (BDS_Roles::is_admin($uid) || BDS_Roles::is_manager($uid)) return true;
+        return (int) ($row->assigned_to ?? 0) === $uid || (int) ($row->created_by ?? 0) === $uid;
+    }
+
+    protected function can_access_customer(int $customer_id): bool {
+        global $wpdb;
+        $customer = $wpdb->get_row($wpdb->prepare(
+            "SELECT assigned_to, created_by FROM {$wpdb->prefix}bds_customers WHERE id = %d",
+            $customer_id
+        ));
+        if (!$customer) return false;
+        return $this->can_access_record($customer);
+    }
+
     protected function not_found(): WP_Error {
         return new WP_Error('not_found', 'Không tìm thấy dữ liệu', ['status' => 404]);
     }

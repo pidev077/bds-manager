@@ -5,6 +5,14 @@ class BDS_API_Properties extends BDS_API_Base {
 
     protected $rest_base = 'properties';
 
+    // Loại hình theo doc "Bộ lọc cực mạnh": Căn hộ / Nhà phố / Shophouse / Biệt thự
+    const PROPERTY_CATEGORIES = [
+        'apartment'  => ['1PN', '2PN', '3PN', '4PN', '5PN', '1PN+1', '2PN+1 (1 Toilet)', '2PN+1 (2 Toilets)', '2PN+2 (2 Toilets)', '2PN (2 TOILET)', '2PN (1 TOILET)', '3PN+1', 'Studio'],
+        'townhouse'  => ['Nhà liền kề'],
+        'shophouse'  => ['Shop-house'],
+        'villa'      => ['Biệt thự đơn lập', 'Biệt thự song lập', 'Biệt thự tứ lập'],
+    ];
+
     public function register_routes(): void {
         $ns = $this->namespace;
         register_rest_route($ns, '/properties', [
@@ -39,6 +47,15 @@ class BDS_API_Properties extends BDS_API_Base {
                 $where[] = "{$f} = %s";
                 $vals[]  = sanitize_text_field($v);
             }
+        }
+
+        // Loại hình (nhóm căn hộ / nhà phố / shophouse / biệt thự) — gộp nhiều property_type cụ thể
+        $category = sanitize_text_field($request->get_param('property_category') ?? '');
+        if ($category && isset(self::PROPERTY_CATEGORIES[$category])) {
+            $types = self::PROPERTY_CATEGORIES[$category];
+            $placeholders = implode(',', array_fill(0, count($types), '%s'));
+            $where[] = "property_type IN ({$placeholders})";
+            $vals = array_merge($vals, $types);
         }
 
         if ($request->get_param('bedrooms')) {

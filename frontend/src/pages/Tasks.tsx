@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
-import { needsApi, customersApi } from '@/lib/api'
+import { Plus, Search, SlidersHorizontal, ArrowUpDown, Download } from 'lucide-react'
+import { needsApi, customersApi, usersApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 import type { Need } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
@@ -11,6 +12,21 @@ import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
+
+const PROCESSING_LABELS: Record<string, string> = { verifying: 'Xác thực', consulting: 'Tư vấn', transaction: 'Giao dịch' }
+const ACTIVITY_LABELS: Record<string, string> = { active: 'Đang hoạt động', inactive: 'Ngừng hoạt động' }
+
+function downloadCsv(filename: string, rows: (string | number)[][]) {
+  const escape = (v: string | number) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const csv = rows.map(r => r.map(escape).join(',')).join('\r\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 const COLUMNS = [
   { key: 'verifying',   label: 'Xác thực',  processing_status: 'verifying' },
@@ -36,14 +52,21 @@ type FormData = {
 export default function Tasks() {
   const [tab, setTab] = useState('all')
   const [search, setSearch] = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
   const [openForm, setOpenForm] = useState(false)
   const [editing, setEditing] = useState<Need | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const qc = useQueryClient()
+  const user = useAuthStore(s => s.user)
+  const isAdminOrManager = !!(user?.is_admin || user?.is_manager)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tasks-needs', tab],
-    queryFn: () => needsApi.list({ per_page: 200, activity_status: tab === 'all' ? undefined : 'active' }),
+    queryKey: ['tasks-needs', tab, assignedTo],
+    queryFn: () => needsApi.list({
+      per_page: 200,
+      activity_status: tab === 'all' ? undefined : 'active',
+      assigned_to: assignedTo || undefined,
+    }),
   })
 
   const { data: customersData } = useQuery({
@@ -51,14 +74,42 @@ export default function Tasks() {
     queryFn: () => customersApi.list({ per_page: 200 }),
   })
 
+  const { data: usersData } = useQuery({
+    queryKey: ['users-select'],
+    queryFn: () => usersApi.list(),
+    enabled: isAdminOrManager,
+  })
+
   const needs: Need[] = data?.data ?? []
   const customers = customersData?.data ?? []
+  const employees: { id: number; display_name: string }[] = usersData?.data ?? []
 
   const filtered = needs.filter(n =>
     !search ||
     n.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-    n.title?.toLowerCase().includes(search.toLowerCase())
+    n.title?.toLowerCase().includes(search.toLowerCase()) ||
+    n.assigned_to_name?.toLowerCase().includes(search.toLowerCase())
   )
+
+  const handleExport = () => {
+    const header = ['Mã', 'Tiêu đề', 'Khách hàng', 'SĐT', 'Dự án quan tâm', 'Ngân sách từ (tỷ)', 'Ngân sách đến (tỷ)', 'Số phòng ngủ', 'Giai đoạn xử lý', 'Trạng thái', 'Điểm tiềm năng', 'Nhân viên phụ trách', 'Ngày tạo']
+    const rows = filtered.map(n => [
+      n.code || `NCD-${n.id}`,
+      n.title || '',
+      n.customer_name || '',
+      n.customer_phone || '',
+      n.project_preference || '',
+      n.budget_min ?? '',
+      n.budget_max ?? '',
+      n.bedrooms || '',
+      PROCESSING_LABELS[n.processing_status] ?? n.processing_status ?? '',
+      ACTIVITY_LABELS[n.activity_status] ?? n.activity_status ?? '',
+      n.score ?? '',
+      n.assigned_to_name || '',
+      formatDate(n.created_at),
+    ])
+    downloadCsv(`cong-viec-${tab}-${Date.now()}.csv`, [header, ...rows])
+  }
 
   const { register, handleSubmit, reset } = useForm<FormData>()
 
@@ -141,7 +192,16 @@ export default function Tasks() {
         <button className="btn-secondary gap-2">
           <SlidersHorizontal size={14} /> Bộ lọc
         </button>
-        <div className="ml-auto">
+        {isAdminOrManager && (
+          <select className="input w-52" value={assignedTo} onChange={e => setAssignedTo(e.target.value)}>
+            <option value="">-- Tất cả nhân viên --</option>
+            {employees.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+          </select>
+        )}
+        <div className="ml-auto flex items-center gap-3">
+          <button className="btn-secondary gap-2" onClick={handleExport} disabled={filtered.length === 0}>
+            <Download size={14} /> Xuất CSV
+          </button>
           <button className="btn-secondary gap-2">
             <ArrowUpDown size={14} /> SLA xử lý ít nhất – nhiều nhất
           </button>

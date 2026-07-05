@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, ChevronRight, Link2, Clipboard, ShoppingCart } from 'lucide-react'
 import { propertiesApi, customersApi, cartApi, projectsApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import { formatArea, formatCurrency } from '@/lib/utils'
 import type { Property, Customer, Project } from '@/types'
 import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_COLORS } from '@/types'
@@ -34,6 +35,13 @@ const AREA_RANGES = [
   { label: 'Trên 120m²', min: 120, max: undefined },
 ]
 
+const PROPERTY_CATEGORIES = [
+  { label: 'Căn hộ', value: 'apartment' },
+  { label: 'Nhà phố', value: 'townhouse' },
+  { label: 'Shophouse', value: 'shophouse' },
+  { label: 'Biệt thự', value: 'villa' },
+]
+
 type FormData = {
   title: string; code: string; project_name: string; block: string; floor: string
   unit_number: string; area_gross: number; area_net: number; bedrooms: number
@@ -46,7 +54,9 @@ export default function Properties() {
   const [search, setSearch] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [filterType, setFilterType] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterFundType, setFilterFundType] = useState('')
   const [filterPriceRange, setFilterPriceRange] = useState<number | null>(null)
   const [filterAreaRange, setFilterAreaRange] = useState<number | null>(null)
   const [filterView, setFilterView] = useState('')
@@ -57,6 +67,7 @@ export default function Properties() {
   const [cartTarget, setCartTarget] = useState<Property | null>(null)
   const [cartCustomerId, setCartCustomerId] = useState<number>(0)
   const [viewing, setViewing] = useState<Property | null>(null)
+  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
@@ -88,6 +99,8 @@ export default function Properties() {
     project_name: filterProject || undefined,
     property_type: typeTab !== 'all' ? typeTab : (filterType || undefined),
     status: filterStatus || undefined,
+    fund_type: filterFundType || undefined,
+    property_category: filterCategory || undefined,
     view_type: filterView || undefined,
     price_min: priceRange?.min, price_max: priceRange?.max,
     area_min: areaRange?.min, area_max: areaRange?.max,
@@ -135,9 +148,13 @@ export default function Properties() {
 
   // Mở thẳng chi tiết căn khi đến từ thông báo new_property/updated_property
   useEffect(() => {
-    const openPropertyId = (location.state as { openPropertyId?: number } | null)?.openPropertyId
-    if (!openPropertyId) return
-    propertiesApi.get(openPropertyId).then(res => setViewing(res.data)).catch(() => {})
+    const state = location.state as { openPropertyId?: number; filterFundType?: string; filterStatus?: string } | null
+    if (!state) return
+    if (state.openPropertyId) {
+      propertiesApi.get(state.openPropertyId).then(res => setViewing(res.data)).catch(() => {})
+    }
+    if (state.filterFundType !== undefined) { setFilterFundType(state.filterFundType); setPage(1) }
+    if (state.filterStatus !== undefined) { setFilterStatus(state.filterStatus); setPage(1) }
     navigate(location.pathname, { replace: true, state: null })
   }, [location, navigate])
 
@@ -147,8 +164,8 @@ export default function Properties() {
       <div className="w-56 shrink-0">
         <div className="bds-card">
           <div className="px-3 py-2.5 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quỹ căn sơ cấp</p>
-            <p className="text-xs text-gray-400 mt-0.5">Danh sách quỹ căn sơ cấp của tôi</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Kho sản phẩm</p>
+            <p className="text-xs text-gray-400 mt-0.5">Danh sách dự án</p>
           </div>
           <div className="px-2 py-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-2">DANH SÁCH QUỸ CĂN</p>
@@ -173,7 +190,7 @@ export default function Properties() {
       <div className="flex-1 min-w-0">
         <div className="page-header">
           <h1 className="page-title">
-            {filterProject ? `Quỹ căn cao tầng ${filterProject}` : 'Quản lý quỹ căn'}
+            {filterProject ? `Kho sản phẩm - ${filterProject}` : 'Kho sản phẩm'}
           </h1>
           <button className="btn-primary" onClick={handleAdd}>
             <Plus size={16} /> Thêm mới
@@ -201,14 +218,32 @@ export default function Properties() {
           <button className="btn-secondary gap-2">
             <SlidersHorizontal size={14} /> Bộ lọc
           </button>
-          <select className="input w-44 shrink-0" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <select className="input w-44 shrink-0" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}>
             <option value="">Tất cả trạng thái</option>
             {Object.entries(PROPERTY_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
+          <select className="input w-40 shrink-0" value={filterFundType} onChange={e => { setFilterFundType(e.target.value); setPage(1) }}>
+            <option value="">Tất cả quỹ căn</option>
+            <option value="F0">Quỹ sơ cấp (F0)</option>
+            <option value="F1">Quỹ thứ cấp (F1)</option>
+          </select>
         </div>
 
-        {/* Quick filters: Giá / Diện tích / View */}
+        {/* Quick filters: Loại hình / Giá / Diện tích / View */}
         <div className="bds-card flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2.5 mb-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-400 shrink-0">Loại hình:</span>
+            {PROPERTY_CATEGORIES.map(c => (
+              <button
+                key={c.value}
+                className={`filter-chip ${filterCategory === c.value ? 'active' : ''}`}
+                onClick={() => { setFilterCategory(filterCategory === c.value ? '' : c.value); setPage(1) }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="w-px h-4 bg-gray-200 hidden sm:block" />
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-gray-400 shrink-0">Giá:</span>
             {PRICE_RANGES.map((r, i) => (
@@ -305,7 +340,7 @@ export default function Properties() {
                         <button className="text-xs text-gray-500 hover:underline flex items-center gap-1" onClick={() => setCartTarget(p)}>
                           <ShoppingCart size={12} /> Thêm vào giỏ
                         </button>
-                        <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(p.id)}>Xóa</button>
+                        {isAdmin && <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(p.id)}>Xóa</button>}
                       </div>
                     </td>
                   </tr>

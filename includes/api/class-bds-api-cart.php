@@ -18,6 +18,7 @@ class BDS_API_Cart extends BDS_API_Base {
         global $wpdb;
         $customer_id = (int) ($request->get_param('customer_id') ?? 0);
         if (!$customer_id) return $this->bad_request('Thiếu customer_id');
+        if (!$this->can_access_customer($customer_id)) return $this->forbidden();
 
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT ci.*, p.code AS property_code, p.unit_number AS property_unit_number, p.title AS property_title,
@@ -50,6 +51,7 @@ class BDS_API_Cart extends BDS_API_Base {
         $property_id = (int) ($request->get_param('property_id') ?? 0);
 
         if (!$customer_id || !$property_id) return $this->bad_request('Thiếu customer_id hoặc property_id');
+        if (!$this->can_access_customer($customer_id)) return $this->forbidden();
 
         $wpdb->query($wpdb->prepare(
             "INSERT IGNORE INTO {$wpdb->prefix}bds_cart_items (customer_id, property_id, added_by, created_at) VALUES (%d, %d, %d, %s)",
@@ -69,7 +71,9 @@ class BDS_API_Cart extends BDS_API_Base {
     public function delete_item(WP_REST_Request $request): WP_REST_Response|WP_Error {
         global $wpdb;
         $id = (int) $request['id'];
-        if (!$wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}bds_cart_items WHERE id = %d", $id))) return $this->not_found();
+        $existing = $wpdb->get_row($wpdb->prepare("SELECT id, customer_id FROM {$wpdb->prefix}bds_cart_items WHERE id = %d", $id));
+        if (!$existing) return $this->not_found();
+        if (!$this->can_access_customer((int) $existing->customer_id)) return $this->forbidden();
         $wpdb->delete($wpdb->prefix . 'bds_cart_items', ['id' => $id], ['%d']);
         BDS_Activity_Logger::log_delete('cart_item', $id);
         return new WP_REST_Response(['deleted' => true, 'id' => $id]);

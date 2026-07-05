@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, Phone, Sparkles } from 'lucide-react'
 import { needsApi, customersApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatArea } from '@/lib/utils'
 import type { Need, Property } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
@@ -42,6 +43,7 @@ export default function Needs() {
   const [editing, setEditing] = useState<Need | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [matchingNeed, setMatchingNeed] = useState<Need | null>(null)
+  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
@@ -186,7 +188,7 @@ export default function Needs() {
                       <button className="text-xs text-gray-500 hover:underline flex items-center gap-1" onClick={() => setMatchingNeed(n)}>
                         <Sparkles size={12} /> Căn phù hợp
                       </button>
-                      <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(n.id)}>Xóa</button>
+                      {isAdmin && <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(n.id)}>Xóa</button>}
                     </div>
                   </td>
                 </tr>

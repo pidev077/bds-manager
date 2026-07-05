@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, SlidersHorizontal, Phone, History, Trash2 } from 'lucide-react'
 import { customersApi, careLogsApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import { formatDate, formatDateTime, getInitials, getAvatarColor } from '@/lib/utils'
 import type { Customer, CareLog } from '@/types'
 import { CARE_LOG_TYPE_LABELS } from '@/types'
@@ -44,6 +45,7 @@ export default function Customers() {
   const [careCustomer, setCareCustomer] = useState<Customer | null>(null)
   const [newLogType, setNewLogType] = useState('call')
   const [newLogContent, setNewLogContent] = useState('')
+  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
   const qc = useQueryClient()
 
   const params: Record<string, unknown> = { page, per_page: 20, search: search || undefined }
@@ -191,7 +193,7 @@ export default function Customers() {
                       <button className="text-xs text-gray-500 hover:underline flex items-center gap-1" onClick={() => setCareCustomer(c)}>
                         <History size={12} /> Nhật ký
                       </button>
-                      <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(c.id)}>Xóa</button>
+                      {isAdmin && <button className="text-xs text-red-500 hover:underline" onClick={() => setDeleteId(c.id)}>Xóa</button>}
                     </div>
                   </td>
                 </tr>

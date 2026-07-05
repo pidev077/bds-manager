@@ -63,6 +63,7 @@ class BDS_API_Transactions extends BDS_API_Base {
         global $wpdb;
         $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_transactions WHERE id = %d", (int) $request['id']));
         if (!$item) return $this->not_found();
+        if (!$this->can_access_record($item)) return $this->forbidden();
         return new WP_REST_Response($this->format_item($item));
     }
 
@@ -107,6 +108,7 @@ class BDS_API_Transactions extends BDS_API_Base {
         $id = (int) $request['id'];
         $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_transactions WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
+        if (!$this->can_access_record($existing)) return $this->forbidden();
 
         $data = [];
         foreach (['name', 'source_customer', 'source_transaction', 'stage', 'status', 'project', 'tier', 'notes'] as $f) {

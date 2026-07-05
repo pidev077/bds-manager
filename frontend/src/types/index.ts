@@ -240,6 +240,7 @@ export interface KPI {
   needs: number
   appointments_total: number
   appointments_done: number
+  site_visit_done: number
   deposits: number
   transactions: number
   transaction_value: number
@@ -373,6 +374,51 @@ export const CARE_LOG_TYPE_LABELS: Record<string, string> = {
   visit: 'Đã xem nhà',
   consideration: 'Đang cân nhắc',
   note: 'Ghi chú khác',
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+export interface DashboardNewPropertyItem {
+  id: number
+  code: string
+  unit_number: string
+  title: string
+  project_name: string
+  status: string
+  price: number
+  updated_at: string
+}
+
+export interface DashboardNeedItem {
+  id: number
+  title: string
+  processing_status: string
+  activity_status: string
+  customer_id: number
+  customer_name: string
+}
+
+export interface DashboardAppointmentItem {
+  id: number
+  type: string
+  status: string
+  appointment_date: string
+  customer_id: number
+  customer_name: string
+}
+
+export interface DashboardStats {
+  primary_count: number
+  secondary_count: number
+  total_properties: number
+  available_count: number
+  cancelled_count: number
+  sold_count: number
+  new_today_count: number
+  new_today_items: DashboardNewPropertyItem[]
+  needs_pending_count: number
+  needs_pending_items: DashboardNeedItem[]
+  appointments_today_count: number
+  appointments_today_items: DashboardAppointmentItem[]
 }
 
 // ─── Sale Request ──────────────────────────────────────────────────────────────

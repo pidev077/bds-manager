@@ -23,6 +23,7 @@ class BDS_API_Needs extends BDS_API_Base {
         global $wpdb;
         $need = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_needs WHERE id = %d", (int) $request['id']));
         if (!$need) return $this->not_found();
+        if (!$this->can_access_record($need)) return $this->forbidden();
         $matches = BDS_Need_Matcher::find_matching_properties($need, 10);
         return new WP_REST_Response($this->format_items($matches));
     }
@@ -54,6 +55,11 @@ class BDS_API_Needs extends BDS_API_Base {
             $vals[]  = (int) $request->get_param('customer_id');
         }
 
+        if ($request->get_param('assigned_to')) {
+            $where[] = 'assigned_to = %d';
+            $vals[]  = (int) $request->get_param('assigned_to');
+        }
+
         $resp = $this->paginate($request, 'bds_needs', $where, $vals, 'ORDER BY created_at DESC');
         $data = array_map(function ($item) {
             if (!empty($item['customer_id'])) {
@@ -78,6 +84,7 @@ class BDS_API_Needs extends BDS_API_Base {
         global $wpdb;
         $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_needs WHERE id = %d", (int) $request['id']));
         if (!$item) return $this->not_found();
+        if (!$this->can_access_record($item)) return $this->forbidden();
         return new WP_REST_Response($this->format_item($item));
     }
 
@@ -129,6 +136,7 @@ class BDS_API_Needs extends BDS_API_Base {
         $id = (int) $request['id'];
         $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_needs WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
+        if (!$this->can_access_record($existing)) return $this->forbidden();
 
         $data = [];
         $str_fields = ['code', 'title', 'type', 'tier', 'project_preference', 'bedrooms', 'activity_status', 'buy_status', 'processing_status', 'classification', 'label_tag', 'need_type', 'finance_type'];
@@ -154,6 +162,7 @@ class BDS_API_Needs extends BDS_API_Base {
         $id = (int) $request['id'];
         $existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}bds_needs WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
+        if (!BDS_Roles::is_admin()) return $this->forbidden();
 
         $wpdb->delete($wpdb->prefix . 'bds_needs', ['id' => $id], ['%d']);
         BDS_Activity_Logger::log_delete('need', $id);

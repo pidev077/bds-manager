@@ -70,6 +70,13 @@ class BDS_Roles {
         remove_role(self::ROLE_EMPLOYEE);
         remove_role(self::ROLE_MANAGER);
         remove_role(self::ROLE_ADMIN);
+
+        $wp_admin = get_role('administrator');
+        if ($wp_admin) {
+            foreach (array_keys(self::CAPS) as $cap) {
+                $wp_admin->remove_cap($cap);
+            }
+        }
     }
 
     public static function is_admin(int $user_id = 0): bool {

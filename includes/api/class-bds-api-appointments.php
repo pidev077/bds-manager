@@ -63,6 +63,7 @@ class BDS_API_Appointments extends BDS_API_Base {
         global $wpdb;
         $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_appointments WHERE id = %d", (int) $request['id']));
         if (!$item) return $this->not_found();
+        if (!$this->can_access_record($item)) return $this->forbidden();
         return new WP_REST_Response($this->format_item($item));
     }
 
@@ -103,6 +104,7 @@ class BDS_API_Appointments extends BDS_API_Base {
         $id = (int) $request['id'];
         $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_appointments WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
+        if (!$this->can_access_record($existing)) return $this->forbidden();
 
         $data = [];
         foreach (['type', 'location', 'status', 'notes'] as $f) {
@@ -131,6 +133,7 @@ class BDS_API_Appointments extends BDS_API_Base {
         $id = (int) $request['id'];
         $existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}bds_appointments WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
+        if (!BDS_Roles::is_admin()) return $this->forbidden();
 
         $wpdb->delete($wpdb->prefix . 'bds_appointments', ['id' => $id], ['%d']);
         BDS_Activity_Logger::log_delete('appointment', $id);

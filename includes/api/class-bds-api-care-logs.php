@@ -18,6 +18,7 @@ class BDS_API_Care_Logs extends BDS_API_Base {
         global $wpdb;
         $customer_id = (int) ($request->get_param('customer_id') ?? 0);
         if (!$customer_id) return $this->bad_request('Thiếu customer_id');
+        if (!$this->can_access_customer($customer_id)) return $this->forbidden();
 
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}bds_care_logs WHERE customer_id = %d ORDER BY log_date ASC, id ASC",
@@ -38,6 +39,7 @@ class BDS_API_Care_Logs extends BDS_API_Base {
         $customer_id = (int) ($request->get_param('customer_id') ?? 0);
         $content = sanitize_textarea_field($request->get_param('content') ?? '');
         if (!$customer_id || $content === '') return $this->bad_request('Thiếu customer_id hoặc nội dung');
+        if (!$this->can_access_customer($customer_id)) return $this->forbidden();
 
         $data = [
             'customer_id' => $customer_id,
@@ -61,7 +63,9 @@ class BDS_API_Care_Logs extends BDS_API_Base {
     public function delete_item(WP_REST_Request $request): WP_REST_Response|WP_Error {
         global $wpdb;
         $id = (int) $request['id'];
-        if (!$wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}bds_care_logs WHERE id = %d", $id))) return $this->not_found();
+        $existing = $wpdb->get_row($wpdb->prepare("SELECT id, customer_id FROM {$wpdb->prefix}bds_care_logs WHERE id = %d", $id));
+        if (!$existing) return $this->not_found();
+        if (!$this->can_access_customer((int) $existing->customer_id)) return $this->forbidden();
         $wpdb->delete($wpdb->prefix . 'bds_care_logs', ['id' => $id], ['%d']);
         BDS_Activity_Logger::log_delete('care_log', $id);
         return new WP_REST_Response(['deleted' => true, 'id' => $id]);

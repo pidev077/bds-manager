@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, User, LogOut, BarChart2, Activity, Users, LayoutGrid, Home, ShoppingCart, FileText, Building2 } from 'lucide-react'
+import { Bell, ChevronDown, User, LogOut, BarChart2, Activity, Users, LayoutGrid, ClipboardList, CalendarClock, Target, ReceiptText, UserCog, Building2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -9,37 +9,34 @@ import { useNotificationStore } from '@/store/notificationStore'
 import { formatRelativeTime } from '@/lib/utils'
 import type { Notification } from '@/types'
 
+type DropdownSubItem = { label: string; to: string; icon?: React.ElementType; adminOnly?: boolean }
+
 type NavItem =
   | { label: string; to: string; dropdown?: never; adminOnly?: boolean }
-  | { label: string; to?: never; dropdown: { label: string; to: string; icon?: React.ElementType }[]; adminOnly?: boolean }
+  | { label: string; to?: never; dropdown: DropdownSubItem[]; adminOnly?: boolean }
 
+// Menu chính theo đúng 9 mục trong tài liệu "Hệ thống kho sản phẩm cho sale"
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Quản lý công việc', to: '/tasks' },
-  { label: 'Khách hàng', to: '/customers' },
-  { label: 'Quỹ căn', to: '/properties' },
-  { label: 'Lịch hẹn', to: '/appointments' },
-  { label: 'Nhu cầu', to: '/needs' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Kho sản phẩm', to: '/properties' },
+  { label: 'Giỏ hàng', to: '/cart' },
+  { label: 'Quản lý chủ nhà', to: '/property-owners' },
+  { label: 'CRM khách hàng', to: '/customers' },
+  { label: 'Nhật ký chăm sóc', to: '/care-logs' },
+  { label: 'Kho tài liệu', to: '/documents' },
+  { label: 'Báo cáo Sale', to: '/kpi' },
   {
-    label: 'Hoa hồng',
-    dropdown: [{ label: 'Danh sách hoa hồng', to: '/transactions' }],
-  },
-  { label: 'Quản lý cọc thiện chí', to: '/deposits' },
-  { label: 'Quản lý giao dịch', to: '/transactions' },
-  {
-    label: 'Quản lý Sale',
-    dropdown: [{ label: 'Yêu cầu tạo mới Sale', to: '/sale-management' }],
-  },
-  {
-    label: 'Khác',
-    adminOnly: true,
+    label: 'Thêm',
     dropdown: [
-      { label: 'Chủ nhà', to: '/property-owners', icon: Home },
-      { label: 'Giỏ hàng', to: '/cart', icon: ShoppingCart },
-      { label: 'Kho tài liệu', to: '/documents', icon: FileText },
-      { label: 'Quản lý dự án', to: '/project-management', icon: Building2 },
-      { label: 'Báo cáo KPI', to: '/kpi', icon: BarChart2 },
-      { label: 'Nhật ký hoạt động', to: '/activity', icon: Activity },
-      { label: 'Quản lý nhân viên', to: '/users', icon: Users },
+      { label: 'Quản lý công việc', to: '/tasks', icon: ClipboardList },
+      { label: 'Lịch hẹn', to: '/appointments', icon: CalendarClock },
+      { label: 'Nhu cầu khách hàng', to: '/needs', icon: Target },
+      { label: 'Quản lý cọc thiện chí', to: '/deposits', icon: ReceiptText },
+      { label: 'Quản lý giao dịch / Hoa hồng', to: '/transactions', icon: BarChart2 },
+      { label: 'Yêu cầu tạo mới Sale', to: '/sale-management', icon: UserCog },
+      { label: 'Quản lý dự án', to: '/project-management', icon: Building2, adminOnly: true },
+      { label: 'Nhật ký hoạt động', to: '/activity', icon: Activity, adminOnly: true },
+      { label: 'Quản lý nhân viên', to: '/users', icon: Users, adminOnly: true },
     ],
   },
 ]
@@ -99,7 +96,7 @@ export default function Navbar() {
       <div className="max-w-[1600px] mx-auto px-4">
         <div className="flex items-center h-14 gap-1">
           {/* Logo */}
-          <div className="flex items-center gap-2 mr-4 shrink-0 cursor-pointer" onClick={() => navigate('/tasks')}>
+          <div className="flex items-center gap-2 mr-4 shrink-0 cursor-pointer" onClick={() => navigate('/dashboard')}>
             <LayoutGrid size={20} className="text-brand" />
             <span className="font-bold text-base text-gray-800 hidden sm:block">QT AGENT</span>
           </div>
@@ -134,7 +131,9 @@ export default function Navbar() {
                         style={{ top: dropdownPos.top, left: dropdownPos.left }}
                         onClick={e => e.stopPropagation()}
                       >
-                        {item.dropdown.map(sub => (
+                        {item.dropdown
+                          .filter(sub => !sub.adminOnly || user?.is_admin || user?.is_manager)
+                          .map(sub => (
                           <button
                             key={sub.to}
                             className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
