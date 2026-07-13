@@ -386,7 +386,7 @@ export default function Properties() {
                       <p className="font-medium">{formatCurrency(p.price)}</p>
                       {!!p.price_per_sqm && <p className="text-xs text-gray-500">{formatCurrency(p.price_per_sqm)}/m²</p>}
                     </td>
-                    <td className="table-cell">{p.price_rent ? formatCurrency(p.price_rent) : '-'}</td>
+                    <td className="table-cell">{p.price_rent ? `${formatCurrency(p.price_rent)}/tháng` : '-'}</td>
                     <td className="table-cell">{p.block || '-'}</td>
                     <td className="table-cell text-gray-500">{p.road || '-'}</td>
                     <td className="table-cell">
@@ -532,7 +532,7 @@ export default function Properties() {
             <input className="input" type="number" {...register('price_per_sqm', { valueAsNumber: true })} placeholder="0" />
           </div>
           <div>
-            <label className="label">Giá thuê (VNĐ)</label>
+            <label className="label">Giá thuê (VNĐ/tháng)</label>
             <input className="input" type="number" {...register('price_rent', { valueAsNumber: true })} placeholder="0" />
           </div>
           <div>
@@ -749,7 +749,7 @@ export default function Properties() {
               <div><p className="text-gray-400 text-xs">Hướng cửa / ban công</p><p className="font-medium">{viewing.direction || '--'} / {viewing.balcony_direction || '--'}</p></div>
               <div><p className="text-gray-400 text-xs">View</p><p className="font-medium">{viewing.view_type || '--'}</p></div>
               <div><p className="text-gray-400 text-xs">Giá bán / Giá m²</p><p className="font-medium">{formatCurrency(viewing.price)} / {formatCurrency(viewing.price_per_sqm)}</p></div>
-              <div><p className="text-gray-400 text-xs">Giá thuê</p><p className="font-medium">{formatCurrency(viewing.price_rent)}</p></div>
+              <div><p className="text-gray-400 text-xs">Giá thuê</p><p className="font-medium">{viewing.price_rent ? `${formatCurrency(viewing.price_rent)}/tháng` : '--'}</p></div>
               <div><p className="text-gray-400 text-xs">Trạng thái</p><Badge label={PROPERTY_STATUS_LABELS[viewing.status] ?? viewing.status} color={PROPERTY_STATUS_COLORS[viewing.status] as never ?? 'gray'} dot /></div>
               {viewing.tag && <div><p className="text-gray-400 text-xs">Phân loại</p><Badge label={PROPERTY_TAG_LABELS[viewing.tag] ?? viewing.tag} color={viewing.tag === 'hot' ? 'red' as never : viewing.tag === 'priority' ? 'yellow' as never : 'gray' as never} /></div>}
               <div><p className="text-gray-400 text-xs">Cập nhật lần cuối</p><p className="font-medium">{viewing.updated_by_name || '--'} · {formatDate(viewing.updated_at)}</p></div>
