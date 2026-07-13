@@ -5,6 +5,7 @@ import { depositsApi, customersApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Deposit } from '@/types'
+import { DEPOSIT_BOOKING_STATUS_LABELS, DEPOSIT_BOOKING_STATUS_COLORS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -74,7 +75,7 @@ export default function Deposits() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Quản lý cọc thiện chí</h1>
-        <button className="btn-primary" onClick={() => { setEditing(null); reset({ activity_status: 'active', booking_count: 0, total_amount: 0 }); setOpenForm(true) }}>
+        <button className="btn-primary" onClick={() => { setEditing(null); reset({ activity_status: 'active', booking_status: 'pending', booking_count: 0, total_amount: 0 }); setOpenForm(true) }}>
           <Plus size={16} /> Thêm mới
         </button>
       </div>
@@ -116,7 +117,7 @@ export default function Deposits() {
                     <Badge label={d.activity_status === 'active' ? 'Đang hoạt động' : 'Ngừng'} color={d.activity_status === 'active' ? 'green' : 'gray'} dot />
                   </td>
                   <td className="table-cell">
-                    {d.booking_status ? <Badge label={d.booking_status} color="blue" /> : <span className="text-gray-400">--</span>}
+                    {d.booking_status ? <Badge label={DEPOSIT_BOOKING_STATUS_LABELS[d.booking_status] ?? d.booking_status} color={(DEPOSIT_BOOKING_STATUS_COLORS[d.booking_status] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}
                   </td>
                   <td className="table-cell text-center">{d.booking_count}</td>
                   <td className="table-cell font-medium">{formatCurrency(d.total_amount)}</td>
@@ -189,7 +190,9 @@ export default function Deposits() {
           </div>
           <div>
             <label className="label">Trạng thái booking</label>
-            <input className="input" {...register('booking_status')} placeholder="VD: Chờ xử lý" />
+            <select className="input" {...register('booking_status')}>
+              {Object.entries(DEPOSIT_BOOKING_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Loại hình BDS</label>

@@ -72,7 +72,7 @@ class BDS_API_Deposits extends BDS_API_Base {
             'project'          => sanitize_text_field($request->get_param('project') ?? ''),
             'zone'             => sanitize_text_field($request->get_param('zone') ?? ''),
             'activity_status'  => sanitize_text_field($request->get_param('activity_status') ?? 'active'),
-            'booking_status'   => sanitize_text_field($request->get_param('booking_status') ?? ''),
+            'booking_status'   => sanitize_text_field($request->get_param('booking_status') ?? 'pending'),
             'booking_count'    => (int) ($request->get_param('booking_count') ?? 0),
             'total_amount'     => (float) ($request->get_param('total_amount') ?? 0),
             'property_type'    => sanitize_text_field($request->get_param('property_type') ?? ''),

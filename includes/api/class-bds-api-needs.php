@@ -108,7 +108,7 @@ class BDS_API_Needs extends BDS_API_Base {
             'area_min'           => (float) ($request->get_param('area_min') ?? 0),
             'area_max'           => (float) ($request->get_param('area_max') ?? 0),
             'activity_status'    => sanitize_text_field($request->get_param('activity_status') ?? 'active'),
-            'buy_status'         => sanitize_text_field($request->get_param('buy_status') ?? ''),
+            'buy_status'         => sanitize_text_field($request->get_param('buy_status') ?? 'considering'),
             'processing_status'  => sanitize_text_field($request->get_param('processing_status') ?? ''),
             'classification'     => sanitize_text_field($request->get_param('classification') ?? ''),
             'label_tag'          => sanitize_text_field($request->get_param('label_tag') ?? ''),

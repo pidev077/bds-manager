@@ -6,6 +6,7 @@ import { needsApi, customersApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatArea } from '@/lib/utils'
 import type { Need, Property } from '@/types'
+import { NEED_BUY_STATUS_LABELS, NEED_BUY_STATUS_COLORS, LEAD_CLASSIFICATION_LABELS, LEAD_CLASSIFICATION_COLORS, NEED_FINANCE_TYPE_LABELS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -32,7 +33,8 @@ type FormData = {
   title: string; customer_id: number; type: string; tier: string
   project_preference: string; budget_min: number; budget_max: number
   bedrooms: string; activity_status: string; processing_status: string
-  buy_status: string; need_type: string; finance_type: string; score: number
+  buy_status: string; classification: string; label_tag: string
+  need_type: string; finance_type: string; score: number
 }
 
 export default function Needs() {
@@ -85,7 +87,7 @@ export default function Needs() {
 
   const handleEdit = (n: Need) => {
     setEditing(n)
-    reset({ title: n.title, customer_id: n.customer_id, type: n.type, tier: n.tier, project_preference: n.project_preference, budget_min: n.budget_min, budget_max: n.budget_max, bedrooms: n.bedrooms, activity_status: n.activity_status, processing_status: n.processing_status, buy_status: n.buy_status, need_type: n.need_type, finance_type: n.finance_type, score: n.score })
+    reset({ title: n.title, customer_id: n.customer_id, type: n.type, tier: n.tier, project_preference: n.project_preference, budget_min: n.budget_min, budget_max: n.budget_max, bedrooms: n.bedrooms, activity_status: n.activity_status, processing_status: n.processing_status, buy_status: n.buy_status, classification: n.classification, label_tag: n.label_tag, need_type: n.need_type, finance_type: n.finance_type, score: n.score })
     setOpenForm(true)
   }
 
@@ -110,7 +112,7 @@ export default function Needs() {
         <div>
           <h1 className="page-title">Danh sách nhu cầu mua – Sơ cấp</h1>
         </div>
-        <button className="btn-primary" onClick={() => { setEditing(null); reset({ type: 'buy', tier: 'primary', activity_status: 'active' }); setOpenForm(true) }}>
+        <button className="btn-primary" onClick={() => { setEditing(null); reset({ type: 'buy', tier: 'primary', activity_status: 'active', buy_status: 'considering' }); setOpenForm(true) }}>
           <Plus size={16} /> Thêm mới
         </button>
       </div>
@@ -176,12 +178,14 @@ export default function Needs() {
                     <Badge label={n.activity_status === 'active' ? 'Đang hoạt động' : 'Ngừng hoạt động'} color={(ACTIVITY_COLORS[n.activity_status] ?? 'gray') as never} dot />
                   </td>
                   <td className="table-cell">
-                    {n.buy_status ? <Badge label={n.buy_status} color="blue" /> : <span className="text-gray-400">--</span>}
+                    {n.buy_status ? <Badge label={NEED_BUY_STATUS_LABELS[n.buy_status] ?? n.buy_status} color={(NEED_BUY_STATUS_COLORS[n.buy_status] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}
                   </td>
-                  <td className="table-cell text-gray-500">{n.classification || '--'}</td>
+                  <td className="table-cell">
+                    {n.classification ? <Badge label={LEAD_CLASSIFICATION_LABELS[n.classification] ?? n.classification} color={(LEAD_CLASSIFICATION_COLORS[n.classification] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}
+                  </td>
                   <td className="table-cell text-gray-500">{n.label_tag || '--'}</td>
                   <td className="table-cell text-gray-500">{n.need_type || 'Mua từ CĐT'}</td>
-                  <td className="table-cell text-gray-500">{n.finance_type || '-'}</td>
+                  <td className="table-cell text-gray-500">{n.finance_type ? (NEED_FINANCE_TYPE_LABELS[n.finance_type] ?? n.finance_type) : '-'}</td>
                   <td className="table-cell">
                     <div className="flex gap-2">
                       <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(n)}>Sửa</button>
@@ -265,6 +269,31 @@ export default function Needs() {
           <div>
             <label className="label">Score (0–100)</label>
             <input className="input" type="number" min="0" max="100" {...register('score', { valueAsNumber: true })} />
+          </div>
+          <div>
+            <label className="label">Trạng thái mua</label>
+            <select className="input" {...register('buy_status')}>
+              <option value="">-- Chưa xác định --</option>
+              {Object.entries(NEED_BUY_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Phân loại</label>
+            <select className="input" {...register('classification')}>
+              <option value="">-- Không --</option>
+              {Object.entries(LEAD_CLASSIFICATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Nhãn cá nhân</label>
+            <input className="input" {...register('label_tag')} placeholder="VD: Khách quen, Ưu tiên gọi lại..." />
+          </div>
+          <div>
+            <label className="label">Tài chính</label>
+            <select className="input" {...register('finance_type')}>
+              <option value="">-- Chưa rõ --</option>
+              {Object.entries(NEED_FINANCE_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
         </form>
       </Modal>

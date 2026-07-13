@@ -43,17 +43,41 @@ export interface Property {
   view_type: string
   price: number
   price_per_sqm: number
-  status: 'available' | 'reserved' | 'sold' | 'cancelled'
+  price_rent: number
+  status: 'available' | 'sold' | 'cancelled'
   property_type: string
   fund_type: string
   component: string
   standard: string
+  road: string
+  dimensions: string
+  tag: string
   description: string
   images: string[] | null
   created_by: number
   updated_by: number
+  updated_by_name?: string
   created_at: string
   updated_at: string
+  // Chủ nhà (từ bds_property_owners, gộp thẳng vào Kho sản phẩm)
+  owner_id: number | null
+  owner_name: string
+  owner_phone: string
+  owner_phone_2: string
+  contact_status: string
+  owner_selling_price: number | null
+  owner_commission_rate: number | null
+  owner_notes: string
+}
+
+export const CONTACT_STATUS_LABELS: Record<string, string> = {
+  not_answered: 'Không bắt máy',
+  no_need: 'Không có nhu cầu',
+  wrong_number: 'Sai số ĐT',
+  blocked: 'Số bị chặn',
+  subscriber_off: 'Thuê bao',
+  unreachable: 'Không liên hệ được',
+  contacted: 'Đã liên hệ được',
 }
 
 export interface Project {
@@ -63,19 +87,30 @@ export interface Project {
   property_count: number
 }
 
+// 3 trạng thái áp dụng chung cho cả bán lẫn cho thuê (loại giao dịch nào cũng dùng chung status này)
 export const PROPERTY_STATUS_LABELS: Record<string, string> = {
-  available: 'Còn hàng',
-  reserved: 'Đã đặt cọc',
-  sold: 'Đã bán với VHM Market',
-  cancelled: 'Đã huỷ',
+  available: 'Đang bán/cho thuê',
+  cancelled: 'Ngưng bán/cho thuê',
+  sold: 'Đã bán/cho thuê',
 }
 
 export const PROPERTY_STATUS_COLORS: Record<string, string> = {
   available: 'green',
-  reserved: 'yellow',
-  sold: 'red',
   cancelled: 'gray',
+  sold: 'red',
 }
+
+export const PROPERTY_TAG_LABELS: Record<string, string> = {
+  hot: 'HOT',
+  priority: 'Ưu tiên',
+  normal: 'Thường',
+}
+
+export const STANDARD_OPTIONS: { value: string; label: string }[] = [
+  { value: 'basic', label: 'Hoàn thiện cơ bản' },
+  { value: 'full', label: 'Hoàn thiện full nội thất' },
+  { value: 'raw', label: 'Hoàn thiện phần thô' },
+]
 
 // ─── Customer ─────────────────────────────────────────────────────────────────
 export interface Customer {
@@ -101,6 +136,32 @@ export interface Customer {
   created_by: number
   created_at: string
   updated_at: string
+}
+
+// "Phân loại" (mức độ ưu tiên chăm sóc) dùng chung 1 thang đo cho cả Khách hàng lẫn Nhu cầu mua,
+// giống hệt "Phân loại" đã chuẩn hoá ở Kho sản phẩm (HOT/Ưu tiên/Thường) để toàn hệ thống đồng nhất.
+export const LEAD_CLASSIFICATION_LABELS: Record<string, string> = {
+  hot: 'HOT',
+  priority: 'Ưu tiên',
+  normal: 'Thường',
+}
+
+export const LEAD_CLASSIFICATION_COLORS: Record<string, string> = {
+  hot: 'red',
+  priority: 'yellow',
+  normal: 'gray',
+}
+
+export const CUSTOMER_VERIFICATION_LABELS: Record<string, string> = {
+  unverified: 'Chưa xác minh',
+  verifying: 'Đang xác minh',
+  verified: 'Đã xác minh',
+}
+
+export const CUSTOMER_VERIFICATION_COLORS: Record<string, string> = {
+  unverified: 'gray',
+  verifying: 'yellow',
+  verified: 'green',
 }
 
 // ─── Need ─────────────────────────────────────────────────────────────────────
@@ -132,6 +193,28 @@ export interface Need {
   created_by: number
   created_at: string
   updated_at: string
+}
+
+// Trạng thái mua = ý định/khả năng mua của khách cho nhu cầu này (khác processing_status, vốn là
+// tiến trình xử lý nội bộ của sale: chưa xử lý → xác thực → hẹn → gặp → giao dịch → xong).
+export const NEED_BUY_STATUS_LABELS: Record<string, string> = {
+  considering: 'Đang cân nhắc',
+  ready: 'Sẵn sàng mua',
+  purchased: 'Đã mua',
+  not_buying: 'Không mua nữa',
+}
+
+export const NEED_BUY_STATUS_COLORS: Record<string, string> = {
+  considering: 'yellow',
+  ready: 'blue',
+  purchased: 'green',
+  not_buying: 'gray',
+}
+
+export const NEED_FINANCE_TYPE_LABELS: Record<string, string> = {
+  cash: 'Tiền mặt',
+  bank_loan: 'Vay ngân hàng',
+  mixed: 'Kết hợp (tiền mặt + vay)',
 }
 
 // ─── Appointment ──────────────────────────────────────────────────────────────
@@ -198,6 +281,22 @@ export interface Deposit {
   updated_at: string
 }
 
+export const DEPOSIT_BOOKING_STATUS_LABELS: Record<string, string> = {
+  pending: 'Chờ xử lý',
+  confirmed: 'Đã xác nhận',
+  converted: 'Đã chuyển cọc chính thức',
+  cancelled: 'Đã hủy',
+  refunded: 'Đã hoàn cọc',
+}
+
+export const DEPOSIT_BOOKING_STATUS_COLORS: Record<string, string> = {
+  pending: 'yellow',
+  confirmed: 'blue',
+  converted: 'green',
+  cancelled: 'gray',
+  refunded: 'orange',
+}
+
 // ─── Transaction ──────────────────────────────────────────────────────────────
 export interface Transaction {
   id: number
@@ -224,6 +323,27 @@ export interface Transaction {
   created_by_name?: string
   created_at: string
   updated_at: string
+}
+
+// "Giai đoạn" giữ nguyên các giá trị tiếng Việt hiện có (không đổi key) để không cần migrate dữ liệu cũ,
+// chỉ thêm màu theo giai đoạn thay vì luôn 1 màu xanh dương như trước.
+export const TRANSACTION_STAGE_COLORS: Record<string, string> = {
+  'Đặt cọc': 'yellow',
+  'Ký HĐMB': 'blue',
+  'Bàn giao': 'purple',
+  'Hoàn thành': 'green',
+}
+
+export const TRANSACTION_STATUS_LABELS: Record<string, string> = {
+  in_progress: 'Đang xử lý',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy',
+}
+
+export const TRANSACTION_STATUS_COLORS: Record<string, string> = {
+  in_progress: 'blue',
+  completed: 'green',
+  cancelled: 'red',
 }
 
 // ─── KPI ──────────────────────────────────────────────────────────────────────
@@ -295,24 +415,6 @@ export interface User {
   registered: string
   is_admin: boolean
   is_manager: boolean
-}
-
-// ─── Property Owner ───────────────────────────────────────────────────────────
-export interface PropertyOwner {
-  id: number
-  property_id: number
-  property_code?: string
-  property_title?: string
-  owner_name: string
-  owner_phone: string
-  selling_price: number
-  commission_rate: number
-  notes: string
-  assigned_to: number
-  assigned_to_name?: string
-  created_by: number
-  created_at: string
-  updated_at: string
 }
 
 // ─── Cart Item ────────────────────────────────────────────────────────────────

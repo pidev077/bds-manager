@@ -73,6 +73,8 @@ class BDS_API_Property_Owners extends BDS_API_Base {
             'property_id'      => $property_id,
             'owner_name'       => $owner_name,
             'owner_phone'      => sanitize_text_field($request->get_param('owner_phone') ?? ''),
+            'owner_phone_2'    => sanitize_text_field($request->get_param('owner_phone_2') ?? ''),
+            'contact_status'   => sanitize_text_field($request->get_param('contact_status') ?? ''),
             'selling_price'    => (float) ($request->get_param('selling_price') ?? 0),
             'commission_rate'  => (float) ($request->get_param('commission_rate') ?? 0),
             'notes'            => sanitize_textarea_field($request->get_param('notes') ?? ''),
@@ -100,7 +102,7 @@ class BDS_API_Property_Owners extends BDS_API_Base {
         if (!$this->can_access_record($existing)) return $this->forbidden();
 
         $data = [];
-        foreach (['owner_name', 'owner_phone', 'notes'] as $f) {
+        foreach (['owner_name', 'owner_phone', 'owner_phone_2', 'contact_status', 'notes'] as $f) {
             if ($request->has_param($f)) $data[$f] = sanitize_text_field($request->get_param($f) ?? '');
         }
         if ($request->has_param('notes')) $data['notes'] = sanitize_textarea_field($request->get_param('notes') ?? '');

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, User, LogOut, BarChart2, Activity, Users, LayoutGrid, ClipboardList, CalendarClock, Target, ReceiptText, UserCog, Building2 } from 'lucide-react'
+import { Bell, ChevronDown, User, LogOut, BarChart2, Activity, Users, LayoutGrid, CalendarClock, Target, ReceiptText, UserCog, Building2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -19,8 +19,8 @@ type NavItem =
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Kho sản phẩm', to: '/properties' },
+  { label: 'Quản lý công việc', to: '/tasks' },
   { label: 'Giỏ hàng', to: '/cart' },
-  { label: 'Quản lý chủ nhà', to: '/property-owners' },
   { label: 'CRM khách hàng', to: '/customers' },
   { label: 'Nhật ký chăm sóc', to: '/care-logs' },
   { label: 'Kho tài liệu', to: '/documents' },
@@ -28,7 +28,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Thêm',
     dropdown: [
-      { label: 'Quản lý công việc', to: '/tasks', icon: ClipboardList },
       { label: 'Lịch hẹn', to: '/appointments', icon: CalendarClock },
       { label: 'Nhu cầu khách hàng', to: '/needs', icon: Target },
       { label: 'Quản lý cọc thiện chí', to: '/deposits', icon: ReceiptText },

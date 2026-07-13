@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BDS_VERSION', '1.5.0');
+define('BDS_VERSION', '1.9.1');
 define('BDS_PLUGIN_FILE', __FILE__);
 define('BDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BDS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -61,6 +61,9 @@ add_action('plugins_loaded', function () {
     if (get_option('bds_version') !== BDS_VERSION) {
         BDS_Database::create_tables();
         bds_seed_default_projects();
+        BDS_Database::migrate_property_types();
+        BDS_Database::migrate_standards();
+        BDS_Database::migrate_tags();
         update_option('bds_version', BDS_VERSION);
     }
 });

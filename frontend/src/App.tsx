@@ -12,7 +12,6 @@ import KPIDashboard from '@/pages/KPIDashboard'
 import ActivityLog from '@/pages/ActivityLog'
 import SaleManagement from '@/pages/SaleManagement'
 import UserManagement from '@/pages/UserManagement'
-import PropertyOwners from '@/pages/PropertyOwners'
 import Cart from '@/pages/Cart'
 import DocumentRepository from '@/pages/DocumentRepository'
 import ProjectManagement from '@/pages/ProjectManagement'
@@ -40,7 +39,6 @@ export default function App() {
           <Route path="needs" element={<Needs />} />
           <Route path="deposits" element={<Deposits />} />
           <Route path="transactions" element={<Transactions />} />
-          <Route path="property-owners" element={<PropertyOwners />} />
           <Route path="cart" element={<Cart />} />
           <Route path="documents" element={<DocumentRepository />} />
           <Route path="care-logs" element={<CareLogTimeline />} />

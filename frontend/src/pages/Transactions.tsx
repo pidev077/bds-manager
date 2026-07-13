@@ -5,6 +5,7 @@ import { transactionsApi, customersApi, propertiesApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Transaction } from '@/types'
+import { TRANSACTION_STAGE_COLORS, TRANSACTION_STATUS_LABELS, TRANSACTION_STATUS_COLORS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -84,7 +85,7 @@ export default function Transactions() {
           <h1 className="page-title">Tất cả giao dịch</h1>
           <p className="text-xs text-gray-400 mt-1">Quản lý tiến trình giao dịch của khách hàng</p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditing(null); reset({ tier: tab, value: 0, commission: 0 }); setOpenForm(true) }}>
+        <button className="btn-primary" onClick={() => { setEditing(null); reset({ tier: tab, value: 0, commission: 0, status: 'in_progress' }); setOpenForm(true) }}>
           <Plus size={16} /> Tạo mới
         </button>
       </div>
@@ -131,10 +132,10 @@ export default function Transactions() {
                   <td className="table-cell text-gray-500">{t.source_customer || '--'}</td>
                   <td className="table-cell text-gray-500">{t.source_transaction || '--'}</td>
                   <td className="table-cell">
-                    {t.stage ? <Badge label={t.stage} color="blue" /> : <span className="text-gray-400">--</span>}
+                    {t.stage ? <Badge label={t.stage} color={(TRANSACTION_STAGE_COLORS[t.stage] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}
                   </td>
                   <td className="table-cell">
-                    {t.status ? <Badge label={t.status} color="green" dot /> : <span className="text-gray-400">--</span>}
+                    {t.status ? <Badge label={TRANSACTION_STATUS_LABELS[t.status] ?? t.status} color={(TRANSACTION_STATUS_COLORS[t.status] ?? 'gray') as never} dot /> : <span className="text-gray-400">--</span>}
                   </td>
                   <td className="table-cell text-gray-500">{t.property_title || '--'}</td>
                   <td className="table-cell text-gray-500">{t.project || '--'}</td>
@@ -202,7 +203,9 @@ export default function Transactions() {
           </div>
           <div>
             <label className="label">Trạng thái</label>
-            <input className="input" {...register('status')} placeholder="VD: Đang xử lý" />
+            <select className="input" {...register('status')}>
+              {Object.entries(TRANSACTION_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Nguồn khách hàng</label>

@@ -99,7 +99,7 @@ class BDS_API_Customers extends BDS_API_Base {
             'source_url'          => esc_url_raw($request->get_param('source_url') ?? ''),
             'vinclub_rank'        => sanitize_text_field($request->get_param('vinclub_rank') ?? ''),
             'connection_status'   => sanitize_text_field($request->get_param('connection_status') ?? 'not_connected'),
-            'verification_status' => sanitize_text_field($request->get_param('verification_status') ?? ''),
+            'verification_status' => sanitize_text_field($request->get_param('verification_status') ?? 'unverified'),
             'classification'      => sanitize_text_field($request->get_param('classification') ?? ''),
             'consent_status'      => (int) ($request->get_param('consent_status') ?? 0),
             'referrer_id'         => (int) ($request->get_param('referrer_id') ?? 0) ?: null,

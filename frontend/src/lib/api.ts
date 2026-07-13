@@ -60,9 +60,12 @@ export const propertiesApi = {
   list: (params?: Record<string, unknown>) => api.get('/properties', { params }),
   get:  (id: number) => api.get(`/properties/${id}`),
   similar: (id: number) => api.get(`/properties/${id}/similar`),
+  sameOwner: (id: number) => api.get(`/properties/${id}/same-owner`),
   create: (data: unknown) => api.post('/properties', data),
   update: (id: number, data: unknown) => api.put(`/properties/${id}`, data),
   delete: (id: number) => api.delete(`/properties/${id}`),
+  uploadImage: (id: number, formData: FormData) => api.post(`/properties/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteImage: (id: number, url: string) => api.delete(`/properties/${id}/images`, { params: { url } }),
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -142,15 +145,6 @@ export const usersApi = {
   create: (data: unknown) => api.post('/users', data),
   update: (id: number, data: unknown) => api.put(`/users/${id}`, data),
   delete: (id: number) => api.delete(`/users/${id}`),
-}
-
-// ─── Property Owners ──────────────────────────────────────────────────────────
-export const propertyOwnersApi = {
-  list: (params?: Record<string, unknown>) => api.get('/property-owners', { params }),
-  get:  (id: number) => api.get(`/property-owners/${id}`),
-  create: (data: unknown) => api.post('/property-owners', data),
-  update: (id: number, data: unknown) => api.put(`/property-owners/${id}`, data),
-  delete: (id: number) => api.delete(`/property-owners/${id}`),
 }
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────

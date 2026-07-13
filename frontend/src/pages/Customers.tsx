@@ -5,7 +5,7 @@ import { customersApi, careLogsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatDate, formatDateTime, getInitials, getAvatarColor } from '@/lib/utils'
 import type { Customer, CareLog } from '@/types'
-import { CARE_LOG_TYPE_LABELS } from '@/types'
+import { CARE_LOG_TYPE_LABELS, CUSTOMER_VERIFICATION_LABELS, CUSTOMER_VERIFICATION_COLORS, LEAD_CLASSIFICATION_LABELS, LEAD_CLASSIFICATION_COLORS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -112,7 +112,7 @@ export default function Customers() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Danh sách khách hàng</h1>
-        <button className="btn-primary" onClick={() => { setEditing(null); reset({ connection_status: 'not_connected' }); setOpenForm(true) }}>
+        <button className="btn-primary" onClick={() => { setEditing(null); reset({ connection_status: 'not_connected', verification_status: 'unverified' }); setOpenForm(true) }}>
           <Plus size={16} /> Tạo mới
         </button>
       </div>
@@ -170,7 +170,7 @@ export default function Customers() {
                     </div>
                   </td>
                   <td className="table-cell">
-                    {c.verification_status ? <Badge label={c.verification_status} color="blue" /> : <span className="text-gray-400">--</span>}
+                    {c.verification_status ? <Badge label={CUSTOMER_VERIFICATION_LABELS[c.verification_status] ?? c.verification_status} color={(CUSTOMER_VERIFICATION_COLORS[c.verification_status] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}
                   </td>
                   <td className="table-cell text-gray-500">{c.vinclub_rank || '--'}</td>
                   <td className="table-cell">
@@ -184,7 +184,7 @@ export default function Customers() {
                   </td>
                   <td className="table-cell text-gray-500">{c.source_detail || '--'}</td>
                   <td className="table-cell text-gray-500">{c.source_overview || '--'}</td>
-                  <td className="table-cell">{c.classification ? <Badge label={c.classification} color="purple" /> : <span className="text-gray-400">--</span>}</td>
+                  <td className="table-cell">{c.classification ? <Badge label={LEAD_CLASSIFICATION_LABELS[c.classification] ?? c.classification} color={(LEAD_CLASSIFICATION_COLORS[c.classification] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}</td>
                   <td className="table-cell text-gray-500">{c.assigned_to_name || '--'}</td>
                   <td className="table-cell text-gray-400">{formatDate(c.created_at)}</td>
                   <td className="table-cell">
@@ -260,11 +260,16 @@ export default function Customers() {
           </div>
           <div>
             <label className="label">Tình trạng xác thực</label>
-            <input className="input" {...register('verification_status')} placeholder="VD: Đã xác thực" />
+            <select className="input" {...register('verification_status')}>
+              {Object.entries(CUSTOMER_VERIFICATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Phân loại</label>
-            <input className="input" {...register('classification')} placeholder="VD: Hot, Warm, Cold" />
+            <select className="input" {...register('classification')}>
+              <option value="">-- Không --</option>
+              {Object.entries(LEAD_CLASSIFICATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Đồng thuận sử dụng data</label>

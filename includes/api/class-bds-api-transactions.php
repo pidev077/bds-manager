@@ -79,7 +79,7 @@ class BDS_API_Transactions extends BDS_API_Base {
             'source_customer'    => sanitize_text_field($request->get_param('source_customer') ?? ''),
             'source_transaction' => sanitize_text_field($request->get_param('source_transaction') ?? ''),
             'stage'              => sanitize_text_field($request->get_param('stage') ?? ''),
-            'status'             => sanitize_text_field($request->get_param('status') ?? ''),
+            'status'             => sanitize_text_field($request->get_param('status') ?? 'in_progress'),
             'project'            => sanitize_text_field($request->get_param('project') ?? ''),
             'tier'               => sanitize_text_field($request->get_param('tier') ?? 'primary'),
             'commission'         => (float) ($request->get_param('commission') ?? 0),

@@ -26,11 +26,15 @@ class BDS_Database {
             view_type VARCHAR(50) DEFAULT NULL,
             price DECIMAL(20,2) DEFAULT NULL,
             price_per_sqm DECIMAL(15,2) DEFAULT NULL,
+            price_rent DECIMAL(20,2) DEFAULT NULL,
             status VARCHAR(50) DEFAULT 'available',
             property_type VARCHAR(50) DEFAULT NULL,
             fund_type VARCHAR(20) DEFAULT 'F0',
             component VARCHAR(50) DEFAULT NULL,
             standard VARCHAR(100) DEFAULT NULL,
+            road VARCHAR(255) DEFAULT NULL,
+            dimensions VARCHAR(50) DEFAULT NULL,
+            tag VARCHAR(30) DEFAULT NULL,
             description TEXT DEFAULT NULL,
             images LONGTEXT DEFAULT NULL,
             metadata LONGTEXT DEFAULT NULL,
@@ -214,6 +218,8 @@ class BDS_Database {
             property_id BIGINT UNSIGNED NOT NULL,
             owner_name VARCHAR(255) NOT NULL,
             owner_phone VARCHAR(20) DEFAULT NULL,
+            owner_phone_2 VARCHAR(20) DEFAULT NULL,
+            contact_status VARCHAR(30) DEFAULT NULL,
             selling_price DECIMAL(20,2) DEFAULT NULL,
             commission_rate DECIMAL(5,2) DEFAULT NULL,
             notes TEXT DEFAULT NULL,
@@ -313,6 +319,58 @@ class BDS_Database {
             KEY idx_is_read (is_read),
             KEY idx_created_at (created_at)
         ) $charset;");
+    }
+
+    // `property_type` (Loại BĐS) trước có nhiều giá trị chi tiết (1PN/2PN.../Biệt thự đơn lập/Nhà liền kề/Shop-house...),
+    // nay chuẩn hoá còn đúng 3 giá trị theo yêu cầu: Liền kề / Biệt thự / Căn hộ. Số phòng ngủ đã có sẵn ở cột
+    // `bedrooms` riêng nên gộp các loại "XPN" về "Căn hộ" không mất thông tin phòng ngủ.
+    public static function migrate_property_types(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bds_properties';
+
+        $map = [
+            'Căn hộ'   => ['1PN', '2PN', '3PN', '4PN', '5PN', '1PN+1', '2PN+1 (1 Toilet)', '2PN+1 (2 Toilets)', '2PN+2 (2 Toilets)', '2PN (2 TOILET)', '2PN (1 TOILET)', '3PN+1', 'Studio'],
+            'Liền kề'  => ['Nhà liền kề', 'Shop-house', 'Shophouse'],
+            'Biệt thự' => ['Biệt thự đơn lập', 'Biệt thự song lập', 'Biệt thự tứ lập'],
+        ];
+
+        foreach ($map as $new_value => $old_values) {
+            $placeholders = implode(',', array_fill(0, count($old_values), '%s'));
+            $wpdb->query($wpdb->prepare(
+                "UPDATE {$table} SET property_type = %s WHERE property_type IN ({$placeholders})",
+                $new_value, ...$old_values
+            ));
+        }
+    }
+
+    // `standard` (Nội thất) trước là ô nhập tự do, nay chỉ còn đúng 3 giá trị: raw / basic / full
+    // (Hoàn thiện phần thô / Hoàn thiện cơ bản / Hoàn thiện full nội thất). Quét toàn bộ dữ liệu cũ,
+    // nhận diện theo từ khoá; giá trị không nhận diện được sẽ mặc định về "basic" theo yêu cầu chỉ giữ 3 loại.
+    public static function migrate_standards(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bds_properties';
+
+        $rows = $wpdb->get_results("SELECT id, standard FROM {$table} WHERE standard IS NOT NULL AND standard != ''");
+        foreach ($rows as $row) {
+            $v = trim(mb_strtolower($row->standard));
+            if (in_array($v, ['raw', 'basic', 'full'], true)) continue; // đã chuẩn
+
+            if (str_contains($v, 'thô')) {
+                $new_value = 'raw';
+            } elseif (str_contains($v, 'full') || str_contains($v, 'đầy đủ') || str_contains($v, 'cao cấp')) {
+                $new_value = 'full';
+            } else {
+                $new_value = 'basic'; // gồm cả "hoàn thiện cơ bản" lẫn mọi giá trị lạ khác
+            }
+
+            $wpdb->update($table, ['standard' => $new_value], ['id' => $row->id]);
+        }
+    }
+
+    // `tag` (Phân loại) đổi key thứ 3 từ "bonus" (Thưởng) sang "normal" (Thường) — cập nhật lại data cũ.
+    public static function migrate_tags(): void {
+        global $wpdb;
+        $wpdb->update($wpdb->prefix . 'bds_properties', ['tag' => 'normal'], ['tag' => 'bonus']);
     }
 
     public static function drop_tables() {
