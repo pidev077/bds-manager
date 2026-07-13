@@ -12,7 +12,7 @@ import type { Notification } from '@/types'
 type DropdownSubItem = { label: string; to: string; icon?: React.ElementType; adminOnly?: boolean }
 
 type NavItem =
-  | { label: string; to: string; dropdown?: never; adminOnly?: boolean }
+  | { label: string; to: string; dropdown?: never; adminOnly?: boolean; segment?: 'sale' | 'rent' }
   | { label: string; to?: never; dropdown: DropdownSubItem[]; adminOnly?: boolean }
 
 // Menu chính theo đúng 9 mục trong tài liệu "Hệ thống kho sản phẩm cho sale"
@@ -20,7 +20,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Kho sản phẩm', to: '/properties' },
   { label: 'Quản lý công việc', to: '/tasks' },
-  { label: 'Giỏ hàng', to: '/cart' },
+  { label: 'Giỏ hàng bán', to: '/cart-sale', segment: 'sale' },
+  { label: 'Giỏ hàng cho thuê', to: '/cart-rent', segment: 'rent' },
   { label: 'CRM khách hàng', to: '/customers' },
   { label: 'Nhật ký chăm sóc', to: '/care-logs' },
   { label: 'Kho tài liệu', to: '/documents' },
@@ -104,6 +105,7 @@ export default function Navbar() {
           <div className="flex items-center gap-0.5 overflow-x-auto flex-1 scrollbar-none">
             {NAV_ITEMS.map(item => {
               if (item.adminOnly && !user?.is_admin && !user?.is_manager) return null
+              if (!item.dropdown && item.segment && !user?.is_admin && !user?.is_manager && user?.segment && user.segment !== 'both' && user.segment !== item.segment) return null
 
               if (item.dropdown) {
                 return (

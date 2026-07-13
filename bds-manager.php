@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BDS_VERSION', '1.9.1');
+define('BDS_VERSION', '1.12.0');
 define('BDS_PLUGIN_FILE', __FILE__);
 define('BDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BDS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -64,6 +64,7 @@ add_action('plugins_loaded', function () {
         BDS_Database::migrate_property_types();
         BDS_Database::migrate_standards();
         BDS_Database::migrate_tags();
+        BDS_Database::migrate_listing_types();
         update_option('bds_version', BDS_VERSION);
     }
 });
@@ -149,6 +150,7 @@ add_action('admin_enqueue_scripts', function ($hook) {
             'avatar'     => get_avatar_url($user->ID, ['size' => 64]),
             'is_admin'   => BDS_Roles::is_admin($user->ID),
             'is_manager' => BDS_Roles::is_manager($user->ID),
+            'segment'    => BDS_Roles::get_segment($user->ID),
         ],
     ]);
 });

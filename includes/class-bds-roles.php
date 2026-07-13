@@ -99,4 +99,41 @@ class BDS_Roles {
         if (self::is_manager($user_id)) return 'Quản lý';
         return 'Nhân viên';
     }
+
+    // Phân khúc phụ trách của nhân viên (Bán / Cho thuê / Cả hai) — admin gán qua Quản lý nhân viên,
+    // dùng để nhân viên mảng nào chỉ thấy đúng sản phẩm/giỏ hàng mảng đó, không bị phân tâm.
+    const SEGMENT_META_KEY = 'bds_segment';
+    const SEGMENTS = ['sale', 'rent', 'both'];
+
+    public static function get_segment(int $user_id = 0): string {
+        $user_id = $user_id ?: get_current_user_id();
+        $segment = get_user_meta($user_id, self::SEGMENT_META_KEY, true);
+        return in_array($segment, self::SEGMENTS, true) ? $segment : 'both';
+    }
+
+    public static function set_segment(int $user_id, string $segment): void {
+        $segment = in_array($segment, self::SEGMENTS, true) ? $segment : 'both';
+        update_user_meta($user_id, self::SEGMENT_META_KEY, $segment);
+    }
+
+    // Mảnh SQL "WHERE {cột} IN (...)" giới hạn theo phân khúc phụ trách — rỗng nếu admin/quản lý
+    // hoặc nhân viên phụ trách cả 2 mảng (không cần giới hạn gì thêm).
+    public static function segment_where_clause(string $column = 'listing_type', int $user_id = 0): string {
+        $user_id = $user_id ?: get_current_user_id();
+        if (self::is_admin($user_id) || self::is_manager($user_id)) return '';
+        $segment = self::get_segment($user_id);
+        if ($segment === 'sale') return "{$column} IN ('sale','both')";
+        if ($segment === 'rent') return "{$column} IN ('rent','both')";
+        return '';
+    }
+
+    // true nếu nhân viên (không phải admin/quản lý) bị giới hạn phân khúc và $listing_type của
+    // record đang xem không thuộc phân khúc đó — dùng để chặn xem chi tiết 1 record cụ thể.
+    public static function is_outside_segment(string $listing_type, int $user_id = 0): bool {
+        $user_id = $user_id ?: get_current_user_id();
+        if (self::is_admin($user_id) || self::is_manager($user_id)) return false;
+        $segment = self::get_segment($user_id);
+        if ($segment === 'both') return false;
+        return $listing_type !== $segment && $listing_type !== 'both';
+    }
 }

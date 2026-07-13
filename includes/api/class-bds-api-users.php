@@ -71,6 +71,7 @@ class BDS_API_Users extends BDS_API_Base {
             return new WP_Error('create_failed', $user_id->get_error_message(), ['status' => 400]);
         }
 
+        BDS_Roles::set_segment($user_id, sanitize_text_field($request->get_param('segment') ?? 'both'));
         BDS_Activity_Logger::log('create_user', "Tạo tài khoản: {$email}", 'user', $user_id);
 
         $user = get_userdata($user_id);
@@ -93,6 +94,10 @@ class BDS_API_Users extends BDS_API_Base {
 
         if ($request->has_param('role')) {
             $user->set_role(sanitize_text_field($request->get_param('role')));
+        }
+
+        if ($request->has_param('segment')) {
+            BDS_Roles::set_segment($id, sanitize_text_field($request->get_param('segment')));
         }
 
         BDS_Activity_Logger::log('update_user', "Cập nhật tài khoản ID: $id", 'user', $id);
@@ -126,6 +131,7 @@ class BDS_API_Users extends BDS_API_Base {
             'registered'   => $user->user_registered,
             'is_admin'     => BDS_Roles::is_admin($user->ID),
             'is_manager'   => BDS_Roles::is_manager($user->ID),
+            'segment'      => BDS_Roles::get_segment($user->ID),
         ];
     }
 }

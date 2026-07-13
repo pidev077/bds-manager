@@ -56,11 +56,15 @@ class BDS_API_Customers extends BDS_API_Base {
         $resp = $this->paginate($request, 'bds_customers', $where, $vals, 'ORDER BY created_at DESC');
         $data = $resp->get_data();
 
-        // Enrich with assigned user name and referrer name
+        // Enrich with assigned user name, người cập nhật gần nhất, và referrer name
         $data = array_map(function ($item) {
             if (!empty($item['assigned_to'])) {
                 $u = get_userdata($item['assigned_to']);
                 $item['assigned_to_name'] = $u ? $u->display_name : '';
+            }
+            if (!empty($item['updated_by'])) {
+                $u = get_userdata($item['updated_by']);
+                $item['updated_by_name'] = $u ? $u->display_name : '';
             }
             if (!empty($item['referrer_id'])) {
                 global $wpdb;
@@ -80,7 +84,12 @@ class BDS_API_Customers extends BDS_API_Base {
         if (!$item) return $this->not_found();
         if (!$this->can_view_customer($item)) return $this->forbidden();
         BDS_Activity_Logger::log_view('customer', (int) $request['id']);
-        return new WP_REST_Response($this->format_item($item));
+        $data = $this->format_item($item);
+        if (!empty($data['updated_by'])) {
+            $u = get_userdata($data['updated_by']);
+            $data['updated_by_name'] = $u ? $u->display_name : '';
+        }
+        return new WP_REST_Response($data);
     }
 
     public function create_item(WP_REST_Request $request): WP_REST_Response|WP_Error {
@@ -90,7 +99,10 @@ class BDS_API_Customers extends BDS_API_Base {
         if (!$full_name) return $this->bad_request('Tên khách hàng không được để trống');
 
         $uid = get_current_user_id();
+        $code = sanitize_text_field($request->get_param('code') ?? '');
         $data = [
+            // code là UNIQUE KEY — để trống phải lưu NULL (không phải ''), xem cùng lý do ở Properties.
+            'code'                => $code !== '' ? $code : null,
             'full_name'           => $full_name,
             'phone'               => sanitize_text_field($request->get_param('phone') ?? ''),
             'email'               => sanitize_email($request->get_param('email') ?? ''),
@@ -103,6 +115,14 @@ class BDS_API_Customers extends BDS_API_Base {
             'classification'      => sanitize_text_field($request->get_param('classification') ?? ''),
             'consent_status'      => (int) ($request->get_param('consent_status') ?? 0),
             'referrer_id'         => (int) ($request->get_param('referrer_id') ?? 0) ?: null,
+            'demand_type'            => sanitize_text_field($request->get_param('demand_type') ?? 'buy'),
+            'customer_type'          => sanitize_text_field($request->get_param('customer_type') ?? ''),
+            'finance_type'           => sanitize_text_field($request->get_param('finance_type') ?? ''),
+            'zone_preference'        => sanitize_text_field($request->get_param('zone_preference') ?? ''),
+            'deal_status'            => sanitize_text_field($request->get_param('deal_status') ?? 'in_progress'),
+            'property_type_interest' => sanitize_text_field($request->get_param('property_type_interest') ?? ''),
+            'area_interest'          => sanitize_text_field($request->get_param('area_interest') ?? ''),
+            'direction_interest'     => sanitize_text_field($request->get_param('direction_interest') ?? ''),
             'notes'               => sanitize_textarea_field($request->get_param('notes') ?? ''),
             'assigned_to'         => $request->get_param('assigned_to') ? (int) $request->get_param('assigned_to') : $uid,
             'created_by'          => $uid,
@@ -130,9 +150,15 @@ class BDS_API_Customers extends BDS_API_Base {
         if (!$this->can_view_customer($existing)) return $this->forbidden();
 
         $data = [];
-        $str_fields = ['full_name', 'phone', 'source_detail', 'source_overview', 'vinclub_rank', 'connection_status', 'verification_status', 'classification', 'auto_classification', 'cdp_segment', 'notes'];
+        $str_fields = ['full_name', 'phone', 'source_detail', 'source_overview', 'vinclub_rank', 'connection_status', 'verification_status', 'classification', 'auto_classification', 'cdp_segment', 'notes',
+            'demand_type', 'customer_type', 'finance_type', 'zone_preference', 'deal_status', 'property_type_interest', 'area_interest', 'direction_interest'];
         foreach ($str_fields as $f) {
             if ($request->has_param($f)) $data[$f] = sanitize_text_field($request->get_param($f) ?? '');
+        }
+        if ($request->has_param('code')) {
+            // code là UNIQUE KEY — để trống phải lưu NULL, không lưu '' (xem create_item)
+            $code = sanitize_text_field($request->get_param('code') ?? '');
+            $data['code'] = $code !== '' ? $code : null;
         }
         if ($request->has_param('email')) $data['email'] = sanitize_email($request->get_param('email'));
         if ($request->has_param('source_url')) $data['source_url'] = esc_url_raw($request->get_param('source_url'));

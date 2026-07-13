@@ -27,6 +27,11 @@ class BDS_Database {
             price DECIMAL(20,2) DEFAULT NULL,
             price_per_sqm DECIMAL(15,2) DEFAULT NULL,
             price_rent DECIMAL(20,2) DEFAULT NULL,
+            listing_type VARCHAR(20) DEFAULT 'sale',
+            commission_sale_type VARCHAR(10) DEFAULT 'percent',
+            commission_sale_value DECIMAL(15,2) DEFAULT NULL,
+            commission_rent_type VARCHAR(10) DEFAULT 'percent',
+            commission_rent_value DECIMAL(15,2) DEFAULT NULL,
             status VARCHAR(50) DEFAULT 'available',
             property_type VARCHAR(50) DEFAULT NULL,
             fund_type VARCHAR(20) DEFAULT 'F0',
@@ -45,6 +50,7 @@ class BDS_Database {
             PRIMARY KEY (id),
             UNIQUE KEY code (code),
             KEY idx_status (status),
+            KEY idx_listing_type (listing_type),
             KEY idx_project (project_name(100)),
             KEY idx_created_by (created_by),
             KEY idx_view_type (view_type)
@@ -53,6 +59,7 @@ class BDS_Database {
         // Customers (Khách hàng - private per employee)
         dbDelta("CREATE TABLE {$wpdb->prefix}bds_customers (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            code VARCHAR(50) DEFAULT NULL,
             full_name VARCHAR(255) NOT NULL,
             phone VARCHAR(20) DEFAULT NULL,
             email VARCHAR(255) DEFAULT NULL,
@@ -67,6 +74,14 @@ class BDS_Database {
             auto_classification VARCHAR(100) DEFAULT NULL,
             consent_status TINYINT DEFAULT 0,
             referrer_id BIGINT UNSIGNED DEFAULT NULL,
+            demand_type VARCHAR(20) DEFAULT 'buy',
+            customer_type VARCHAR(20) DEFAULT NULL,
+            finance_type VARCHAR(20) DEFAULT NULL,
+            zone_preference VARCHAR(255) DEFAULT NULL,
+            deal_status VARCHAR(20) DEFAULT 'in_progress',
+            property_type_interest VARCHAR(50) DEFAULT NULL,
+            area_interest VARCHAR(50) DEFAULT NULL,
+            direction_interest VARCHAR(50) DEFAULT NULL,
             notes TEXT DEFAULT NULL,
             metadata LONGTEXT DEFAULT NULL,
             assigned_to BIGINT UNSIGNED NOT NULL,
@@ -75,9 +90,11 @@ class BDS_Database {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
+            UNIQUE KEY code (code),
             KEY idx_assigned_to (assigned_to),
             KEY idx_created_by (created_by),
-            KEY idx_phone (phone)
+            KEY idx_phone (phone),
+            KEY idx_deal_status (deal_status)
         ) $charset;");
 
         // Needs (Nhu cầu mua)
@@ -371,6 +388,15 @@ class BDS_Database {
     public static function migrate_tags(): void {
         global $wpdb;
         $wpdb->update($wpdb->prefix . 'bds_properties', ['tag' => 'normal'], ['tag' => 'bonus']);
+    }
+
+    // Cột `listing_type` mới thêm, mặc định 'sale' cho mọi dòng cũ — suy luận lại từ dữ liệu giá đã có
+    // sẵn: căn nào chỉ có giá thuê (không có giá bán) thì đổi sang 'rent'; căn nào có cả 2 giá thì 'both'.
+    public static function migrate_listing_types(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bds_properties';
+        $wpdb->query("UPDATE {$table} SET listing_type = 'rent' WHERE (price IS NULL OR price = 0) AND price_rent > 0");
+        $wpdb->query("UPDATE {$table} SET listing_type = 'both' WHERE price > 0 AND price_rent > 0");
     }
 
     public static function drop_tables() {

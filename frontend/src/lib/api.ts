@@ -16,7 +16,7 @@ const getConfig = (): BdsConfig => {
     siteUrl: 'http://bds.local',
     adminUrl: 'http://bds.local/wp-admin/',
     pluginUrl: '/',
-    user: { id: 1, name: 'Admin', email: 'admin@bds.local', roles: ['administrator'], avatar: '', is_admin: true, is_manager: true },
+    user: { id: 1, name: 'Admin', email: 'admin@bds.local', roles: ['administrator'], avatar: '', is_admin: true, is_manager: true, segment: 'both' },
   }
 }
 
@@ -149,7 +149,7 @@ export const usersApi = {
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 export const cartApi = {
-  list: (customerId: number) => api.get('/cart', { params: { customer_id: customerId } }),
+  list: (customerId: number, listingType?: 'sale' | 'rent') => api.get('/cart', { params: { customer_id: customerId, listing_type: listingType } }),
   add: (data: { customer_id: number; property_id: number }) => api.post('/cart', data),
   remove: (id: number) => api.delete(`/cart/${id}`),
 }

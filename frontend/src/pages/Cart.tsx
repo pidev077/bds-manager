@@ -4,13 +4,16 @@ import { Plus, Search, Trash2 } from 'lucide-react'
 import { cartApi, customersApi, propertiesApi } from '@/lib/api'
 import { formatCurrency, formatArea } from '@/lib/utils'
 import type { CartItem, Customer, Property } from '@/types'
-import { PROPERTY_STATUS_LABELS } from '@/types'
+import { getPropertyStatusLabel } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Modal from '@/components/ui/Modal'
 import toast from 'react-hot-toast'
 
-export default function Cart() {
+// Giỏ hàng bán và giỏ hàng cho thuê là 2 trang riêng biệt (CartSale.tsx / CartRent.tsx) vì do 2 mảng
+// sale khác nhau phụ trách — component này chỉ chứa phần logic/giao diện dùng chung, tham số hoá theo
+// listingType để mỗi trang chỉ thấy đúng khách/căn thuộc phân khúc của mình.
+export default function CartBoard({ listingType, title }: { listingType: 'sale' | 'rent'; title: string }) {
   const [customerId, setCustomerId] = useState<number>(0)
   const [openAdd, setOpenAdd] = useState(false)
   const [propertySearch, setPropertySearch] = useState('')
@@ -22,16 +25,18 @@ export default function Cart() {
   })
   const customers: Customer[] = customersData?.data ?? []
 
+  const cartQueryKey = ['cart', listingType, customerId]
+
   const { data: cartData, isLoading } = useQuery({
-    queryKey: ['cart', customerId],
-    queryFn: () => cartApi.list(customerId),
+    queryKey: cartQueryKey,
+    queryFn: () => cartApi.list(customerId, listingType),
     enabled: !!customerId,
   })
   const items: CartItem[] = cartData?.data ?? []
 
   const { data: propertiesData } = useQuery({
-    queryKey: ['properties-search', propertySearch],
-    queryFn: () => propertiesApi.list({ per_page: 20, search: propertySearch || undefined }),
+    queryKey: ['properties-search', listingType, propertySearch],
+    queryFn: () => propertiesApi.list({ per_page: 20, search: propertySearch || undefined, listing_type: listingType }),
     enabled: openAdd,
   })
   const searchResults: Property[] = propertiesData?.data ?? []
@@ -40,7 +45,7 @@ export default function Cart() {
     mutationFn: (propertyId: number) => cartApi.add({ customer_id: customerId, property_id: propertyId }),
     onSuccess: () => {
       toast.success('Đã thêm vào giỏ hàng')
-      qc.invalidateQueries({ queryKey: ['cart', customerId] })
+      qc.invalidateQueries({ queryKey: cartQueryKey })
     },
     onError: () => toast.error('Có lỗi xảy ra!'),
   })
@@ -49,17 +54,18 @@ export default function Cart() {
     mutationFn: (id: number) => cartApi.remove(id),
     onSuccess: () => {
       toast.success('Đã xóa khỏi giỏ hàng')
-      qc.invalidateQueries({ queryKey: ['cart', customerId] })
+      qc.invalidateQueries({ queryKey: cartQueryKey })
     },
     onError: () => toast.error('Không thể xóa!'),
   })
 
   const existingPropertyIds = new Set(items.map(i => i.property_id))
+  const priceLabel = listingType === 'rent' ? 'Giá thuê' : 'Giá bán'
 
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Giỏ hàng cho khách</h1>
+        <h1 className="page-title">{title}</h1>
         {!!customerId && (
           <button className="btn-primary" onClick={() => { setPropertySearch(''); setOpenAdd(true) }}>
             <Plus size={16} /> Thêm căn vào giỏ
@@ -82,7 +88,7 @@ export default function Cart() {
             <table className="w-full">
               <thead>
                 <tr>
-                  {['Mã căn', 'Tên căn', 'Dự án', 'Trạng thái', 'Giá bán', 'DT', 'PN', 'Thao tác'].map(h => (
+                  {['Mã căn', 'Tên căn', 'Dự án', 'Trạng thái', priceLabel, 'DT', 'PN', 'Thao tác'].map(h => (
                     <th key={h} className="table-header">{h}</th>
                   ))}
                 </tr>
@@ -97,8 +103,12 @@ export default function Cart() {
                     <td className="table-cell font-medium text-blue-600">{i.property_code || `#${i.property_id}`}</td>
                     <td className="table-cell">{i.property_title || '--'}</td>
                     <td className="table-cell text-gray-500">{i.property_project || '--'}</td>
-                    <td className="table-cell text-gray-500">{i.property_status ? (PROPERTY_STATUS_LABELS[i.property_status] ?? i.property_status) : '--'}</td>
-                    <td className="table-cell font-medium">{i.property_price ? formatCurrency(i.property_price) : '--'}</td>
+                    <td className="table-cell text-gray-500">{i.property_status ? getPropertyStatusLabel(i.property_status, i.property_listing_type) : '--'}</td>
+                    <td className="table-cell font-medium">
+                      {listingType === 'rent'
+                        ? (i.property_price_rent ? `${formatCurrency(i.property_price_rent)}/tháng` : '--')
+                        : (i.property_price ? formatCurrency(i.property_price) : '--')}
+                    </td>
                     <td className="table-cell">{i.property_area_gross ? formatArea(i.property_area_gross) : '--'}</td>
                     <td className="table-cell">{i.property_bedrooms || '--'}</td>
                     <td className="table-cell">
@@ -126,7 +136,11 @@ export default function Cart() {
             <div key={p.id} className="flex items-center justify-between py-2.5">
               <div>
                 <p className="text-sm font-medium text-gray-800">{p.code || p.unit_number} - {p.title}</p>
-                <p className="text-xs text-gray-500">{p.project_name} {p.price ? `· ${formatCurrency(p.price)}` : ''}</p>
+                <p className="text-xs text-gray-500">
+                  {p.project_name} {listingType === 'rent'
+                    ? (p.price_rent ? `· ${formatCurrency(p.price_rent)}/tháng` : '')
+                    : (p.price ? `· ${formatCurrency(p.price)}` : '')}
+                </p>
               </div>
               <button
                 className="btn-secondary text-xs"

@@ -5,7 +5,13 @@ import { customersApi, careLogsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatDate, formatDateTime, getInitials, getAvatarColor } from '@/lib/utils'
 import type { Customer, CareLog } from '@/types'
-import { CARE_LOG_TYPE_LABELS, CUSTOMER_VERIFICATION_LABELS, CUSTOMER_VERIFICATION_COLORS, LEAD_CLASSIFICATION_LABELS, LEAD_CLASSIFICATION_COLORS } from '@/types'
+import {
+  CARE_LOG_TYPE_LABELS, CUSTOMER_VERIFICATION_LABELS,
+  LEAD_CLASSIFICATION_LABELS, LEAD_CLASSIFICATION_COLORS,
+  CUSTOMER_DEMAND_TYPE_LABELS, CUSTOMER_TYPE_LABELS, NEED_FINANCE_TYPE_LABELS,
+  CUSTOMER_DEAL_STATUS_LABELS, CUSTOMER_DEAL_STATUS_COLORS,
+  PROPERTY_TYPE_OPTIONS, DIRECTION_OPTIONS,
+} from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -22,17 +28,14 @@ const TABS = [
   { label: 'Người giới thiệu', value: 'referrer' },
 ]
 
-const CONNECTION_COLORS: Record<string, string> = {
-  connected: 'green',
-  not_connected: 'gray',
-}
-
 const SOURCES = ['Facebook', 'Zalo', 'Website', 'Giới thiệu', 'Sự kiện', 'Telemarketing', 'idp-form-submission', 'Khác']
 
 type FormData = {
-  full_name: string; phone: string; email: string; source_detail: string
-  source_overview: string; vinclub_rank: string; connection_status: string
-  verification_status: string; classification: string; consent_status: number; notes: string
+  code: string; full_name: string; phone: string; email: string; source_detail: string
+  connection_status: string; verification_status: string; classification: string
+  demand_type: string; customer_type: string; finance_type: string; zone_preference: string
+  deal_status: string; property_type_interest: string; area_interest: string; direction_interest: string
+  notes: string
 }
 
 export default function Customers() {
@@ -82,7 +85,13 @@ export default function Customers() {
 
   const handleEdit = (c: Customer) => {
     setEditing(c)
-    reset({ full_name: c.full_name, phone: c.phone, email: c.email, source_detail: c.source_detail, source_overview: c.source_overview, vinclub_rank: c.vinclub_rank, connection_status: c.connection_status, verification_status: c.verification_status, classification: c.classification, consent_status: c.consent_status, notes: c.notes })
+    reset({
+      code: c.code, full_name: c.full_name, phone: c.phone, email: c.email, source_detail: c.source_detail,
+      connection_status: c.connection_status, verification_status: c.verification_status, classification: c.classification,
+      demand_type: c.demand_type, customer_type: c.customer_type, finance_type: c.finance_type, zone_preference: c.zone_preference,
+      deal_status: c.deal_status, property_type_interest: c.property_type_interest, area_interest: c.area_interest, direction_interest: c.direction_interest,
+      notes: c.notes,
+    })
     setOpenForm(true)
   }
 
@@ -112,7 +121,7 @@ export default function Customers() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Danh sách khách hàng</h1>
-        <button className="btn-primary" onClick={() => { setEditing(null); reset({ connection_status: 'not_connected', verification_status: 'unverified' }); setOpenForm(true) }}>
+        <button className="btn-primary" onClick={() => { setEditing(null); reset({ connection_status: 'not_connected', verification_status: 'unverified', demand_type: 'buy', deal_status: 'in_progress' }); setOpenForm(true) }}>
           <Plus size={16} /> Tạo mới
         </button>
       </div>
@@ -140,18 +149,19 @@ export default function Customers() {
           <table className="w-full">
             <thead>
               <tr>
-                {['Khách hàng', 'Tình trạng xác thực', 'Hạng Vinclub', 'Tình trạng kết nối', 'Đồng thuận sử dụng data', 'Nguồn chi tiết', 'Nguồn tổng quan', 'Phân loại', 'Nhân viên phụ trách', 'Ngày tạo', 'Thao tác'].map(h => (
+                {['Mã khách hàng', 'Tên khách', 'Phân loại ưu tiên', 'Nhu cầu', 'Loại khách', 'Tài chính', 'Phân khu', 'Trạng thái', 'Loại BĐS quan tâm', 'Diện tích', 'Hướng', 'Thông tin ghi chú', 'Thời gian', 'Nhân viên cập nhật', 'Thao tác'].map(h => (
                   <th key={h} className="table-header">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={11}><LoadingState /></td></tr>
+                <tr><td colSpan={15}><LoadingState /></td></tr>
               ) : customers.length === 0 ? (
-                <tr><td colSpan={11}><EmptyState message="Không tìm thấy liên hệ phù hợp" /></td></tr>
+                <tr><td colSpan={15}><EmptyState message="Không tìm thấy liên hệ phù hợp" /></td></tr>
               ) : customers.map(c => (
                 <tr key={c.id} className="table-row">
+                  <td className="table-cell text-gray-500">{c.code || '--'}</td>
                   <td className="table-cell">
                     <div className="flex items-center gap-2">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${getAvatarColor(c.full_name)}`}>
@@ -169,24 +179,20 @@ export default function Customers() {
                       </div>
                     </div>
                   </td>
-                  <td className="table-cell">
-                    {c.verification_status ? <Badge label={CUSTOMER_VERIFICATION_LABELS[c.verification_status] ?? c.verification_status} color={(CUSTOMER_VERIFICATION_COLORS[c.verification_status] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}
-                  </td>
-                  <td className="table-cell text-gray-500">{c.vinclub_rank || '--'}</td>
-                  <td className="table-cell">
-                    <Badge
-                      label={c.connection_status === 'connected' ? 'Đã kết nối' : 'Chưa kết nối'}
-                      color={(CONNECTION_COLORS[c.connection_status] ?? 'gray') as never}
-                    />
-                  </td>
-                  <td className="table-cell text-center">
-                    {c.consent_status ? <Badge label="Đã đồng thuận" color="green" /> : <span className="text-gray-400">--</span>}
-                  </td>
-                  <td className="table-cell text-gray-500">{c.source_detail || '--'}</td>
-                  <td className="table-cell text-gray-500">{c.source_overview || '--'}</td>
                   <td className="table-cell">{c.classification ? <Badge label={LEAD_CLASSIFICATION_LABELS[c.classification] ?? c.classification} color={(LEAD_CLASSIFICATION_COLORS[c.classification] ?? 'gray') as never} /> : <span className="text-gray-400">--</span>}</td>
-                  <td className="table-cell text-gray-500">{c.assigned_to_name || '--'}</td>
-                  <td className="table-cell text-gray-400">{formatDate(c.created_at)}</td>
+                  <td className="table-cell text-gray-500">{CUSTOMER_DEMAND_TYPE_LABELS[c.demand_type] ?? c.demand_type ?? '--'}</td>
+                  <td className="table-cell text-gray-500">{c.customer_type ? (CUSTOMER_TYPE_LABELS[c.customer_type] ?? c.customer_type) : '--'}</td>
+                  <td className="table-cell text-gray-500">{c.finance_type ? (NEED_FINANCE_TYPE_LABELS[c.finance_type] ?? c.finance_type) : '--'}</td>
+                  <td className="table-cell text-gray-500">{c.zone_preference || '--'}</td>
+                  <td className="table-cell">
+                    <Badge label={CUSTOMER_DEAL_STATUS_LABELS[c.deal_status] ?? c.deal_status} color={(CUSTOMER_DEAL_STATUS_COLORS[c.deal_status] ?? 'gray') as never} dot />
+                  </td>
+                  <td className="table-cell text-gray-500">{c.property_type_interest || '--'}</td>
+                  <td className="table-cell text-gray-500">{c.area_interest || '--'}</td>
+                  <td className="table-cell text-gray-500">{c.direction_interest || '--'}</td>
+                  <td className="table-cell text-gray-500 max-w-[180px] truncate" title={c.notes}>{c.notes || '--'}</td>
+                  <td className="table-cell text-gray-400">{formatDate(c.updated_at)}</td>
+                  <td className="table-cell text-gray-500">{c.updated_by_name || '--'}</td>
                   <td className="table-cell">
                     <div className="flex gap-2">
                       <button className="text-xs text-blue-500 hover:underline" onClick={() => handleEdit(c)}>Sửa</button>
@@ -221,6 +227,10 @@ export default function Customers() {
       >
         <form className="form-grid" onSubmit={e => e.preventDefault()}>
           <div>
+            <label className="label">Mã khách hàng</label>
+            <input className="input" {...register('code')} placeholder="VD: 223" />
+          </div>
+          <div>
             <label className="label">Họ và tên <span className="text-red-500">*</span></label>
             <input className="input" {...register('full_name', { required: true })} placeholder="Nguyễn Văn A" />
             {errors.full_name && <p className="text-red-500 text-xs mt-1">Bắt buộc nhập</p>}
@@ -234,22 +244,11 @@ export default function Customers() {
             <input className="input" type="email" {...register('email')} placeholder="example@email.com" />
           </div>
           <div>
-            <label className="label">Hạng Vinclub</label>
-            <select className="input" {...register('vinclub_rank')}>
-              <option value="">-- Chưa có --</option>
-              {['Pearl', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Elite'].map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-          <div>
             <label className="label">Nguồn chi tiết</label>
             <select className="input" {...register('source_detail')}>
               <option value="">-- Chọn nguồn --</option>
               {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="label">Nguồn tổng quan</label>
-            <input className="input" {...register('source_overview')} placeholder="VD: Digital, Offline" />
           </div>
           <div>
             <label className="label">Tình trạng kết nối</label>
@@ -265,17 +264,58 @@ export default function Customers() {
             </select>
           </div>
           <div>
-            <label className="label">Phân loại</label>
+            <label className="label">Phân loại ưu tiên</label>
             <select className="input" {...register('classification')}>
               <option value="">-- Không --</option>
               {Object.entries(LEAD_CLASSIFICATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Đồng thuận sử dụng data</label>
-            <select className="input" {...register('consent_status', { valueAsNumber: true })}>
-              <option value={0}>Chưa đồng thuận</option>
-              <option value={1}>Đã đồng thuận</option>
+            <label className="label">Nhu cầu</label>
+            <select className="input" {...register('demand_type')}>
+              {Object.entries(CUSTOMER_DEMAND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Loại khách</label>
+            <select className="input" {...register('customer_type')}>
+              <option value="">-- Không rõ --</option>
+              {Object.entries(CUSTOMER_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Tài chính</label>
+            <select className="input" {...register('finance_type')}>
+              <option value="">-- Chưa rõ --</option>
+              {Object.entries(NEED_FINANCE_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Phân khu quan tâm</label>
+            <input className="input" {...register('zone_preference')} placeholder="VD: Phân khu The Rainbow" />
+          </div>
+          <div>
+            <label className="label">Trạng thái</label>
+            <select className="input" {...register('deal_status')}>
+              {Object.entries(CUSTOMER_DEAL_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Loại BĐS quan tâm</label>
+            <select className="input" {...register('property_type_interest')}>
+              <option value="">-- Không rõ --</option>
+              {PROPERTY_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Diện tích quan tâm</label>
+            <input className="input" {...register('area_interest')} placeholder="VD: 80-120m²" />
+          </div>
+          <div>
+            <label className="label">Hướng quan tâm</label>
+            <select className="input" {...register('direction_interest')}>
+              <option value="">-- Không rõ --</option>
+              {DIRECTION_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div className="form-full">

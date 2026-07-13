@@ -6,7 +6,7 @@ import { propertiesApi, customersApi, cartApi, projectsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatArea, formatCurrency, formatDate } from '@/lib/utils'
 import type { Property, Customer, Project } from '@/types'
-import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_COLORS, CONTACT_STATUS_LABELS, PROPERTY_TAG_LABELS, STANDARD_OPTIONS } from '@/types'
+import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_COLORS, CONTACT_STATUS_LABELS, PROPERTY_TAG_LABELS, STANDARD_OPTIONS, LISTING_TYPE_LABELS, getPropertyStatusLabel, COMMISSION_TYPE_LABELS, formatCommission, PROPERTY_TYPE_OPTIONS, DIRECTION_OPTIONS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Pagination from '@/components/ui/Pagination'
@@ -17,9 +17,9 @@ import MaskedPhone from '@/components/ui/MaskedPhone'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 
-const PROPERTY_TYPES = ['Liền kề', 'Biệt thự', 'Căn hộ']
+const PROPERTY_TYPES = PROPERTY_TYPE_OPTIONS
 
-const DIRECTIONS = ['Đông', 'Tây', 'Nam', 'Bắc', 'Đông Nam', 'Đông Bắc', 'Tây Nam', 'Tây Bắc', 'ĐB - ĐN', 'TB - TN']
+const DIRECTIONS = DIRECTION_OPTIONS
 
 const VIEWS = ['Biển', 'Công viên', 'Quảng trường', 'Sông']
 
@@ -41,7 +41,8 @@ type FormData = {
   unit_number: string; area_gross: number; area_net: number; bedrooms: number
   bathrooms: number; direction: string; balcony_direction: string; view_type: string; price: number
   price_per_sqm: number; price_rent: number; road: string; dimensions: string; tag: string
-  property_type: string; fund_type: string; status: string; standard: string; description: string
+  listing_type: string; property_type: string; fund_type: string; status: string; standard: string; description: string
+  commission_sale_type: string; commission_sale_value: number; commission_rent_type: string; commission_rent_value: number
   owner_name: string; owner_phone: string; owner_phone_2: string; contact_status: string
   owner_selling_price: number; owner_commission_rate: number; owner_notes: string
 }
@@ -50,6 +51,7 @@ export default function Properties() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [filterProject, setFilterProject] = useState('')
+  const [filterListingType, setFilterListingType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterFundType, setFilterFundType] = useState('')
   const [filterCreatedToday, setFilterCreatedToday] = useState(false)
@@ -67,7 +69,12 @@ export default function Properties() {
   const [viewing, setViewing] = useState<Property | null>(null)
   const [imageTarget, setImageTarget] = useState<Property | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const isAdmin = !!useAuthStore(s => s.user)?.is_admin
+  const currentUser = useAuthStore(s => s.user)
+  const isAdmin = !!currentUser?.is_admin
+  // Nhân viên bị giới hạn phân khúc thì ẩn luôn tab của phân khúc mình không phụ trách (backend cũng
+  // đã tự lọc, ẩn tab ở đây chỉ để đỡ rối mắt — không phải lớp bảo mật).
+  const canSeeSaleTab = isAdmin || !!currentUser?.is_manager || !currentUser?.segment || currentUser.segment !== 'rent'
+  const canSeeRentTab = isAdmin || !!currentUser?.is_manager || !currentUser?.segment || currentUser.segment !== 'sale'
   const qc = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
@@ -119,6 +126,7 @@ export default function Properties() {
   const params = {
     page, per_page: 20, search: search || undefined,
     project_name: filterProject || undefined,
+    listing_type: filterListingType || undefined,
     property_type: typeTab !== 'all' ? typeTab : undefined,
     status: filterStatus || undefined,
     fund_type: filterFundType || undefined,
@@ -153,7 +161,10 @@ export default function Properties() {
   })
   const sameOwnerProperties: Property[] = sameOwnerData?.data ?? []
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>()
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>()
+  const formListingType = watch('listing_type')
+  const commissionSaleType = watch('commission_sale_type')
+  const commissionRentType = watch('commission_rent_type')
 
   const saveMutation = useMutation({
     mutationFn: (d: FormData) => editing ? propertiesApi.update(editing.id, d) : propertiesApi.create(d),
@@ -181,7 +192,7 @@ export default function Properties() {
     setOpenForm(true)
   }
 
-  const handleAdd = () => { setEditing(null); reset({ fund_type: 'F0', status: 'available', bedrooms: 0, bathrooms: 0 }); setOpenForm(true) }
+  const handleAdd = () => { setEditing(null); reset({ fund_type: 'F0', status: 'available', listing_type: 'sale', commission_sale_type: 'percent', commission_rent_type: 'percent', bedrooms: 0, bathrooms: 0 }); setOpenForm(true) }
 
   // Mở thẳng chi tiết căn khi đến từ thông báo new_property/updated_property
   useEffect(() => {
@@ -245,6 +256,26 @@ export default function Properties() {
           </h1>
           <button className="btn-primary" onClick={handleAdd}>
             <Plus size={16} /> Thêm mới
+          </button>
+        </div>
+
+        {/* Bán / Cho thuê */}
+        <div className="tab-nav overflow-x-auto flex-nowrap scrollbar-none">
+          <button className={`tab-item shrink-0 ${filterListingType === '' ? 'active' : ''}`} onClick={() => { setFilterListingType(''); setPage(1) }}>
+            Tất cả
+          </button>
+          {canSeeSaleTab && (
+            <button className={`tab-item shrink-0 ${filterListingType === 'sale' ? 'active' : ''}`} onClick={() => { setFilterListingType('sale'); setPage(1) }}>
+              Bán
+            </button>
+          )}
+          {canSeeRentTab && (
+            <button className={`tab-item shrink-0 ${filterListingType === 'rent' ? 'active' : ''}`} onClick={() => { setFilterListingType('rent'); setPage(1) }}>
+              Cho thuê
+            </button>
+          )}
+          <button className={`tab-item shrink-0 ${filterListingType === 'both' ? 'active' : ''}`} onClick={() => { setFilterListingType('both'); setPage(1) }}>
+            Bán và cho thuê
           </button>
         </div>
 
@@ -391,7 +422,7 @@ export default function Properties() {
                     <td className="table-cell text-gray-500">{p.road || '-'}</td>
                     <td className="table-cell">
                       <Badge
-                        label={PROPERTY_STATUS_LABELS[p.status] ?? p.status}
+                        label={getPropertyStatusLabel(p.status, p.listing_type)}
                         color={PROPERTY_STATUS_COLORS[p.status] as never ?? 'gray'}
                         dot
                       />
@@ -524,17 +555,57 @@ export default function Properties() {
             </select>
           </div>
           <div>
-            <label className="label">Giá bán (VNĐ)</label>
-            <input className="input" type="number" {...register('price', { valueAsNumber: true })} placeholder="0" />
+            <label className="label">Loại giao dịch</label>
+            <select className="input" {...register('listing_type')}>
+              {Object.entries(LISTING_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
-          <div>
-            <label className="label">Giá / m² (VNĐ)</label>
-            <input className="input" type="number" {...register('price_per_sqm', { valueAsNumber: true })} placeholder="0" />
-          </div>
-          <div>
-            <label className="label">Giá thuê (VNĐ/tháng)</label>
-            <input className="input" type="number" {...register('price_rent', { valueAsNumber: true })} placeholder="0" />
-          </div>
+          {formListingType !== 'rent' && (
+            <>
+              <div>
+                <label className="label">Giá bán (VNĐ)</label>
+                <input className="input" type="number" {...register('price', { valueAsNumber: true })} placeholder="0" />
+              </div>
+              <div>
+                <label className="label">Giá / m² (VNĐ)</label>
+                <input className="input" type="number" {...register('price_per_sqm', { valueAsNumber: true })} placeholder="0" />
+              </div>
+            </>
+          )}
+          {formListingType !== 'sale' && (
+            <div>
+              <label className="label">Giá thuê (VNĐ/tháng)</label>
+              <input className="input" type="number" {...register('price_rent', { valueAsNumber: true })} placeholder="0" />
+            </div>
+          )}
+          {formListingType !== 'rent' && (
+            <>
+              <div>
+                <label className="label">Loại hoa hồng bán</label>
+                <select className="input" {...register('commission_sale_type')}>
+                  {Object.entries(COMMISSION_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Hoa hồng bán {commissionSaleType === 'fixed' ? '(VNĐ)' : '(%)'}</label>
+                <input className="input" type="number" step={commissionSaleType === 'fixed' ? 1000 : 0.1} {...register('commission_sale_value', { valueAsNumber: true })} placeholder="0" />
+              </div>
+            </>
+          )}
+          {formListingType !== 'sale' && (
+            <>
+              <div>
+                <label className="label">Loại hoa hồng cho thuê</label>
+                <select className="input" {...register('commission_rent_type')}>
+                  {Object.entries(COMMISSION_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Hoa hồng cho thuê {commissionRentType === 'fixed' ? '(VNĐ)' : '(%)'}</label>
+                <input className="input" type="number" step={commissionRentType === 'fixed' ? 1000 : 0.1} {...register('commission_rent_value', { valueAsNumber: true })} placeholder="0" />
+              </div>
+            </>
+          )}
           <div>
             <label className="label">Trạng thái</label>
             <select className="input" {...register('status')}>
@@ -750,7 +821,14 @@ export default function Properties() {
               <div><p className="text-gray-400 text-xs">View</p><p className="font-medium">{viewing.view_type || '--'}</p></div>
               <div><p className="text-gray-400 text-xs">Giá bán / Giá m²</p><p className="font-medium">{formatCurrency(viewing.price)} / {formatCurrency(viewing.price_per_sqm)}</p></div>
               <div><p className="text-gray-400 text-xs">Giá thuê</p><p className="font-medium">{viewing.price_rent ? `${formatCurrency(viewing.price_rent)}/tháng` : '--'}</p></div>
-              <div><p className="text-gray-400 text-xs">Trạng thái</p><Badge label={PROPERTY_STATUS_LABELS[viewing.status] ?? viewing.status} color={PROPERTY_STATUS_COLORS[viewing.status] as never ?? 'gray'} dot /></div>
+              {viewing.listing_type !== 'rent' && (
+                <div><p className="text-gray-400 text-xs">Hoa hồng bán</p><p className="font-medium">{formatCommission(viewing.commission_sale_type, viewing.commission_sale_value, viewing.price)}</p></div>
+              )}
+              {viewing.listing_type !== 'sale' && (
+                <div><p className="text-gray-400 text-xs">Hoa hồng cho thuê</p><p className="font-medium">{formatCommission(viewing.commission_rent_type, viewing.commission_rent_value, viewing.price_rent)}</p></div>
+              )}
+              <div><p className="text-gray-400 text-xs">Trạng thái</p><Badge label={getPropertyStatusLabel(viewing.status, viewing.listing_type)} color={PROPERTY_STATUS_COLORS[viewing.status] as never ?? 'gray'} dot /></div>
+              <div><p className="text-gray-400 text-xs">Loại giao dịch</p><Badge label={LISTING_TYPE_LABELS[viewing.listing_type] ?? viewing.listing_type} color="blue" /></div>
               {viewing.tag && <div><p className="text-gray-400 text-xs">Phân loại</p><Badge label={PROPERTY_TAG_LABELS[viewing.tag] ?? viewing.tag} color={viewing.tag === 'hot' ? 'red' as never : viewing.tag === 'priority' ? 'yellow' as never : 'gray' as never} /></div>}
               <div><p className="text-gray-400 text-xs">Cập nhật lần cuối</p><p className="font-medium">{viewing.updated_by_name || '--'} · {formatDate(viewing.updated_at)}</p></div>
             </div>
@@ -810,7 +888,7 @@ export default function Properties() {
                           <p className="text-sm font-medium text-gray-800">{sp.unit_number || sp.code} - {sp.title}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-xs text-gray-500">{sp.project_name || sp.block || '--'}</span>
-                            <Badge label={PROPERTY_STATUS_LABELS[sp.status] ?? sp.status} color={PROPERTY_STATUS_COLORS[sp.status] as never ?? 'gray'} dot />
+                            <Badge label={getPropertyStatusLabel(sp.status, sp.listing_type)} color={PROPERTY_STATUS_COLORS[sp.status] as never ?? 'gray'} dot />
                           </div>
                         </div>
                         <div className="text-right">

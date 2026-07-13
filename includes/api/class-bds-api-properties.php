@@ -48,6 +48,24 @@ class BDS_API_Properties extends BDS_API_Base {
             }
         }
 
+        // "Bán"/"Cho thuê" là 2 tab lọc chính ở Kho sản phẩm — 1 căn "bán và cho thuê" (both) phải
+        // xuất hiện ở cả 2 tab, nên lọc theo IN (...) chứ không phải so khớp tuyệt đối.
+        $listing_type = sanitize_text_field($request->get_param('listing_type') ?? '');
+        if ($listing_type === 'sale') {
+            $where[] = "listing_type IN ('sale','both')";
+        } elseif ($listing_type === 'rent') {
+            $where[] = "listing_type IN ('rent','both')";
+        } elseif ($listing_type === 'both') {
+            $where[] = "listing_type = 'both'";
+        }
+
+        // Nhân viên bị giới hạn phân khúc (bán/cho thuê) chỉ thấy đúng phân khúc mình phụ trách,
+        // bất kể tab nào đang chọn — admin/quản lý hoặc nhân viên phụ trách cả 2 mảng không bị ảnh hưởng.
+        $segment_where = BDS_Roles::segment_where_clause('listing_type');
+        if ($segment_where !== '') {
+            $where[] = $segment_where;
+        }
+
         if ($request->get_param('created_today')) {
             $today = current_time('Y-m-d');
             $where[] = '(DATE(created_at) = %s OR DATE(updated_at) = %s)';
@@ -109,6 +127,7 @@ class BDS_API_Properties extends BDS_API_Base {
             (int) $request['id']
         ));
         if (!$item) return $this->not_found();
+        if (BDS_Roles::is_outside_segment($item->listing_type)) return $this->forbidden();
         BDS_Activity_Logger::log_view('property', (int) $request['id']);
         $data = $this->attach_owner_info([$this->format_item($item)]);
         return new WP_REST_Response($data[0]);
@@ -133,6 +152,7 @@ class BDS_API_Properties extends BDS_API_Base {
         }
 
         foreach ($items as &$item) {
+            $item = $this->cast_numeric_fields($item);
             $o = $by_property[(int) $item['id']] ?? null;
             $item['owner_id']               = $o ? (int) $o->id : null;
             $item['owner_name']             = $o->owner_name ?? '';
@@ -147,6 +167,19 @@ class BDS_API_Properties extends BDS_API_Base {
         }
 
         return $items;
+    }
+
+    // $wpdb trả mọi cột về dạng chuỗi (VD "0.00"), mà chuỗi "0.00" lại là truthy trong JS — khiến
+    // frontend hiện nhầm giá 0 (chưa nhập) thành có giá trị. Ép các cột số về đúng kiểu float/int để
+    // JSON trả về là số 0 thật (falsy), không phải chuỗi "0.00".
+    private function cast_numeric_fields(array $item): array {
+        foreach (['price', 'price_per_sqm', 'price_rent', 'area_gross', 'area_net', 'commission_sale_value', 'commission_rent_value'] as $f) {
+            if (isset($item[$f])) $item[$f] = (float) $item[$f];
+        }
+        foreach (['bedrooms', 'bathrooms'] as $f) {
+            if (isset($item[$f])) $item[$f] = (int) $item[$f];
+        }
+        return $item;
     }
 
     // `standard` chỉ còn đúng 3 giá trị: raw/basic/full (Hoàn thiện phần thô/cơ bản/full nội thất).
@@ -230,6 +263,11 @@ class BDS_API_Properties extends BDS_API_Base {
             'price'             => (float) ($request->get_param('price') ?? 0),
             'price_per_sqm'     => (float) ($request->get_param('price_per_sqm') ?? 0),
             'price_rent'        => (float) ($request->get_param('price_rent') ?? 0),
+            'listing_type'      => sanitize_text_field($request->get_param('listing_type') ?? 'sale'),
+            'commission_sale_type'  => sanitize_text_field($request->get_param('commission_sale_type') ?? 'percent') === 'fixed' ? 'fixed' : 'percent',
+            'commission_sale_value' => (float) ($request->get_param('commission_sale_value') ?? 0),
+            'commission_rent_type'  => sanitize_text_field($request->get_param('commission_rent_type') ?? 'percent') === 'fixed' ? 'fixed' : 'percent',
+            'commission_rent_value' => (float) ($request->get_param('commission_rent_value') ?? 0),
             'status'            => sanitize_text_field($request->get_param('status') ?? 'available'),
             'property_type'     => sanitize_text_field($request->get_param('property_type') ?? ''),
             'fund_type'         => sanitize_text_field($request->get_param('fund_type') ?? 'F0'),
@@ -285,7 +323,7 @@ class BDS_API_Properties extends BDS_API_Base {
         $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_properties WHERE id = %d", $id));
         if (!$existing) return $this->not_found();
 
-        $fields = ['title', 'project_name', 'block', 'floor', 'unit_number', 'direction', 'balcony_direction', 'view_type', 'status', 'property_type', 'fund_type', 'component', 'standard', 'road', 'dimensions', 'tag', 'description'];
+        $fields = ['title', 'project_name', 'block', 'floor', 'unit_number', 'direction', 'balcony_direction', 'view_type', 'status', 'listing_type', 'property_type', 'fund_type', 'component', 'standard', 'road', 'dimensions', 'tag', 'description'];
         $data = [];
         foreach ($fields as $f) {
             if ($request->has_param($f)) $data[$f] = sanitize_text_field($request->get_param($f) ?? '');
@@ -295,7 +333,10 @@ class BDS_API_Properties extends BDS_API_Base {
             $code = sanitize_text_field($request->get_param('code') ?? '');
             $data['code'] = $code !== '' ? $code : null;
         }
-        foreach (['area_gross', 'area_net', 'price', 'price_per_sqm', 'price_rent'] as $f) {
+        foreach (['commission_sale_type', 'commission_rent_type'] as $f) {
+            if ($request->has_param($f)) $data[$f] = sanitize_text_field($request->get_param($f)) === 'fixed' ? 'fixed' : 'percent';
+        }
+        foreach (['area_gross', 'area_net', 'price', 'price_per_sqm', 'price_rent', 'commission_sale_value', 'commission_rent_value'] as $f) {
             if ($request->has_param($f)) $data[$f] = (float) $request->get_param($f);
         }
         foreach (['bedrooms', 'bathrooms'] as $f) {
@@ -345,7 +386,7 @@ class BDS_API_Properties extends BDS_API_Base {
 
         $data = array_map(function ($item) {
             unset($item->same_project, $item->same_type);
-            return $this->format_item($item);
+            return $this->cast_numeric_fields($this->format_item($item));
         }, $rows);
 
         return new WP_REST_Response($data);

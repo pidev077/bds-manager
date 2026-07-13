@@ -15,6 +15,13 @@ export interface CurrentUser {
   avatar: string
   is_admin: boolean
   is_manager: boolean
+  segment: 'sale' | 'rent' | 'both'
+}
+
+export const SEGMENT_LABELS: Record<string, string> = {
+  sale: 'Bán',
+  rent: 'Cho thuê',
+  both: 'Cả hai',
 }
 
 export interface PaginatedResponse<T> {
@@ -44,6 +51,11 @@ export interface Property {
   price: number
   price_per_sqm: number
   price_rent: number
+  listing_type: 'sale' | 'rent' | 'both'
+  commission_sale_type: 'percent' | 'fixed'
+  commission_sale_value: number
+  commission_rent_type: 'percent' | 'fixed'
+  commission_rent_value: number
   status: 'available' | 'sold' | 'cancelled'
   property_type: string
   fund_type: string
@@ -87,7 +99,7 @@ export interface Project {
   property_count: number
 }
 
-// 3 trạng thái áp dụng chung cho cả bán lẫn cho thuê (loại giao dịch nào cũng dùng chung status này)
+// 3 trạng thái áp dụng chung cho cả bán lẫn cho thuê — dùng làm fallback khi chưa rõ listing_type.
 export const PROPERTY_STATUS_LABELS: Record<string, string> = {
   available: 'Đang bán/cho thuê',
   cancelled: 'Ngưng bán/cho thuê',
@@ -99,6 +111,46 @@ export const PROPERTY_STATUS_COLORS: Record<string, string> = {
   cancelled: 'gray',
   sold: 'red',
 }
+
+export const LISTING_TYPE_LABELS: Record<string, string> = {
+  sale: 'Bán',
+  rent: 'Cho thuê',
+  both: 'Bán và cho thuê',
+}
+
+// Dùng chung cho "Loại BĐS" ở Kho sản phẩm và "Loại BĐS quan tâm" ở Khách hàng — 1 danh sách duy nhất
+// để cả hệ thống đồng nhất, tránh mỗi nơi định nghĩa 1 kiểu khác nhau.
+export const PROPERTY_TYPE_OPTIONS = ['Liền kề', 'Biệt thự', 'Căn hộ']
+
+export const DIRECTION_OPTIONS = ['Đông', 'Tây', 'Nam', 'Bắc', 'Đông Nam', 'Đông Bắc', 'Tây Nam', 'Tây Bắc', 'ĐB - ĐN', 'TB - TN']
+
+export const COMMISSION_TYPE_LABELS: Record<string, string> = {
+  percent: '% hoa hồng',
+  fixed: 'Số tiền cố định',
+}
+
+// value đang ở % (áp lên base = giá bán/giá thuê) hay số tiền cố định — dùng để hiển thị kèm số tiền
+// quy đổi cho dễ hình dung khi type='percent'.
+export const formatCommission = (
+  type: string | undefined, value: number | undefined | null, base: number | undefined | null
+): string => {
+  if (!value) return '--'
+  if (type === 'fixed') return `${value.toLocaleString('vi-VN')} đ`
+  const approx = base ? ` (≈ ${Math.round((base * value) / 100).toLocaleString('vi-VN')} đ)` : ''
+  return `${value}%${approx}`
+}
+
+// Nhãn trạng thái chính xác hơn theo từng loại giao dịch (VD: căn chỉ cho thuê thì "Đang cho thuê"
+// thay vì "Đang bán/cho thuê" chung chung). Dùng getPropertyStatusLabel() thay vì tra thẳng
+// PROPERTY_STATUS_LABELS ở bất cứ đâu hiển thị trạng thái 1 property cụ thể.
+const PROPERTY_STATUS_LABELS_BY_LISTING: Record<string, Record<string, string>> = {
+  sale: { available: 'Đang bán', cancelled: 'Ngưng bán', sold: 'Đã bán' },
+  rent: { available: 'Đang cho thuê', cancelled: 'Ngưng cho thuê', sold: 'Đã cho thuê' },
+  both: PROPERTY_STATUS_LABELS,
+}
+
+export const getPropertyStatusLabel = (status: string, listingType?: string): string =>
+  (PROPERTY_STATUS_LABELS_BY_LISTING[listingType ?? ''] ?? PROPERTY_STATUS_LABELS)[status] ?? status
 
 export const PROPERTY_TAG_LABELS: Record<string, string> = {
   hot: 'HOT',
@@ -115,27 +167,60 @@ export const STANDARD_OPTIONS: { value: string; label: string }[] = [
 // ─── Customer ─────────────────────────────────────────────────────────────────
 export interface Customer {
   id: number
+  code: string
   full_name: string
   phone: string
   email: string
   source_detail: string
-  source_overview: string
   source_url: string
-  vinclub_rank: string
   connection_status: string
   verification_status: string
   cdp_segment: string
   classification: string
   auto_classification: string
-  consent_status: number
   referrer_id: number | null
   referrer_name?: string
+  demand_type: 'buy' | 'rent' | 'both'
+  customer_type: string
+  finance_type: string
+  zone_preference: string
+  deal_status: 'in_progress' | 'stopped' | 'done'
+  property_type_interest: string
+  area_interest: string
+  direction_interest: string
   notes: string
   assigned_to: number
   assigned_to_name?: string
   created_by: number
+  updated_by: number
+  updated_by_name?: string
   created_at: string
   updated_at: string
+}
+
+export const CUSTOMER_DEMAND_TYPE_LABELS: Record<string, string> = {
+  buy: 'Mua',
+  rent: 'Thuê',
+  both: 'Mua và thuê',
+}
+
+export const CUSTOMER_TYPE_LABELS: Record<string, string> = {
+  investment: 'Đầu tư',
+  living: 'Ở',
+  business: 'Kinh doanh',
+}
+
+// 3 pha giống hệt mô hình trạng thái của Kho sản phẩm (Đang/Ngưng/Đã) nhưng đứng từ góc độ khách hàng.
+export const CUSTOMER_DEAL_STATUS_LABELS: Record<string, string> = {
+  in_progress: 'Đang mua/thuê',
+  stopped: 'Ngưng',
+  done: 'Đã mua/thuê',
+}
+
+export const CUSTOMER_DEAL_STATUS_COLORS: Record<string, string> = {
+  in_progress: 'green',
+  stopped: 'gray',
+  done: 'red',
 }
 
 // "Phân loại" (mức độ ưu tiên chăm sóc) dùng chung 1 thang đo cho cả Khách hàng lẫn Nhu cầu mua,
@@ -415,6 +500,7 @@ export interface User {
   registered: string
   is_admin: boolean
   is_manager: boolean
+  segment: 'sale' | 'rent' | 'both'
 }
 
 // ─── Cart Item ────────────────────────────────────────────────────────────────
@@ -425,6 +511,8 @@ export interface CartItem {
   property_code?: string
   property_title?: string
   property_price?: number
+  property_price_rent?: number
+  property_listing_type?: string
   property_project?: string
   property_status?: string
   property_area_gross?: number

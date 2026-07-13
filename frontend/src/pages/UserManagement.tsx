@@ -4,6 +4,7 @@ import { Plus, Search } from 'lucide-react'
 import { usersApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import type { User } from '@/types'
+import { SEGMENT_LABELS } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import LoadingState from '@/components/ui/LoadingState'
 import Badge from '@/components/ui/Badge'
@@ -19,8 +20,9 @@ const ROLE_OPTIONS = [
 ]
 
 const ROLE_COLORS: Record<string, string> = { 'Admin': 'red', 'Quản lý': 'orange', 'Nhân viên': 'blue' }
+const SEGMENT_COLORS: Record<string, string> = { sale: 'blue', rent: 'purple', both: 'gray' }
 
-type FormData = { display_name: string; email: string; username: string; password: string; role: string }
+type FormData = { display_name: string; email: string; username: string; password: string; role: string; segment: string }
 
 export default function UserManagement() {
   const [search, setSearch] = useState('')
@@ -56,7 +58,7 @@ export default function UserManagement() {
 
   const handleEdit = (u: User) => {
     setEditing(u)
-    reset({ display_name: u.display_name, email: u.email, role: u.roles?.[0] ?? 'bds_employee' })
+    reset({ display_name: u.display_name, email: u.email, role: u.roles?.[0] ?? 'bds_employee', segment: u.segment ?? 'both' })
     setOpenForm(true)
   }
 
@@ -64,7 +66,7 @@ export default function UserManagement() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Quản lý nhân viên</h1>
-        <button className="btn-primary" onClick={() => { setEditing(null); reset({ role: 'bds_employee' }); setOpenForm(true) }}>
+        <button className="btn-primary" onClick={() => { setEditing(null); reset({ role: 'bds_employee', segment: 'both' }); setOpenForm(true) }}>
           <Plus size={16} /> Thêm nhân viên
         </button>
       </div>
@@ -81,16 +83,16 @@ export default function UserManagement() {
           <table className="w-full">
             <thead>
               <tr>
-                {['Nhân viên', 'Email', 'Vai trò', 'Ngày tham gia', 'Thao tác'].map(h => (
+                {['Nhân viên', 'Email', 'Vai trò', 'Phân khúc phụ trách', 'Ngày tham gia', 'Thao tác'].map(h => (
                   <th key={h} className="table-header">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={5}><LoadingState rows={5} /></td></tr>
+                <tr><td colSpan={6}><LoadingState rows={5} /></td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={5}><EmptyState message="Chưa có nhân viên nào" /></td></tr>
+                <tr><td colSpan={6}><EmptyState message="Chưa có nhân viên nào" /></td></tr>
               ) : users.map(u => (
                 <tr key={u.id} className="table-row">
                   <td className="table-cell">
@@ -105,6 +107,9 @@ export default function UserManagement() {
                   <td className="table-cell text-gray-600">{u.email}</td>
                   <td className="table-cell">
                     <Badge label={u.role_label} color={(ROLE_COLORS[u.role_label] ?? 'gray') as never} />
+                  </td>
+                  <td className="table-cell">
+                    <Badge label={SEGMENT_LABELS[u.segment] ?? u.segment} color={(SEGMENT_COLORS[u.segment] ?? 'gray') as never} />
                   </td>
                   <td className="table-cell text-gray-400">{formatDate(u.registered)}</td>
                   <td className="table-cell">
@@ -168,6 +173,13 @@ export default function UserManagement() {
             <select className="input" {...register('role')}>
               {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="label">Phân khúc phụ trách</label>
+            <select className="input" {...register('segment')}>
+              {Object.entries(SEGMENT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Nhân viên chỉ thấy Kho sản phẩm/Giỏ hàng đúng phân khúc được gán (Admin/Quản lý luôn thấy cả 2).</p>
           </div>
         </form>
       </Modal>
