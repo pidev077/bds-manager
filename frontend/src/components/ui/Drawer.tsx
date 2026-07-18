@@ -1,18 +1,15 @@
 import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
-interface ModalProps {
+interface DrawerProps {
   open: boolean
   onClose: () => void
   title: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   children: ReactNode
   footer?: ReactNode
 }
 
-const SIZES = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl', '2xl': 'max-w-6xl' }
-
-export default function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
+export default function Drawer({ open, onClose, title, children, footer }: DrawerProps) {
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -23,12 +20,10 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
   if (!open) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className={`modal-box w-full ${SIZES[size]}`}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="modal-header">
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl flex flex-col animate-drawer-in">
+        <div className="modal-header shrink-0">
           <h3 className="font-semibold text-gray-800 text-base">{title}</h3>
           <button
             onClick={onClose}
@@ -37,8 +32,8 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
             <X size={18} />
           </button>
         </div>
-        <div className="modal-body">{children}</div>
-        {footer && <div className="modal-footer">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && <div className="modal-footer shrink-0">{footer}</div>}
       </div>
     </div>
   )

@@ -15,6 +15,11 @@ export const formatDateTime = (date: string | null | undefined): string => {
   return dayjs(date).format('HH:mm DD/MM/YYYY')
 }
 
+export const formatTime = (date: string | null | undefined): string => {
+  if (!date) return '--'
+  return dayjs(date).format('HH:mm:ss')
+}
+
 export const formatRelativeTime = (date: string): string => dayjs(date).fromNow()
 
 export const formatCurrency = (value: number | null | undefined): string => {

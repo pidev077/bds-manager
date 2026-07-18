@@ -109,6 +109,23 @@
     @apply col-span-1 sm:col-span-2;
   }
 
+  /* Form rộng hơn (VD: Kho sản phẩm — nhiều field) dùng riêng để không co hẹp các form 2 cột khác. */
+  .form-grid-compact {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  .form-full-compact {
+    @apply col-span-full;
+  }
+
+  .form-section-header {
+    @apply bg-yellow-100 text-gray-800 font-semibold text-xs uppercase tracking-wide px-3 py-2 rounded mt-2 mb-1;
+  }
+
+  .form-section-header:first-child {
+    @apply mt-0;
+  }
+
   .tab-nav {
     @apply flex items-center gap-1 border-b border-gray-200 mb-4;
   }
@@ -128,6 +145,27 @@
   .filter-chip.active {
     @apply bg-brand/10 border-brand text-brand;
   }
+
+  .filter-section {
+    @apply mb-5;
+  }
+
+  .filter-section-title {
+    @apply text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2;
+  }
+
+  .filter-checkbox {
+    @apply flex items-center gap-2 py-1 text-sm text-gray-700 cursor-pointer select-none;
+  }
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-drawer-in {
+  animation: drawer-in 0.25s ease-out;
 }
 
 /* Scrollbar */

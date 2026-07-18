@@ -49,6 +49,17 @@ function parseError(err: unknown): ApiError {
   return { message: 'Có lỗi xảy ra' }
 }
 
+// Khi mã căn trùng khác loại hình (VD: 1 căn đang cho thuê, giờ nhập thêm bán), backend từ chối tạo
+// dòng mới và trả kèm căn đang có (data.mergeable + data.property) để client mở form sửa, tự chuyển
+// sang "Bán và cho thuê" thay vì báo lỗi khô khan.
+function getMergeableProperty(err: unknown): Record<string, unknown> | null {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { data?: { mergeable?: boolean; property?: Record<string, unknown> } } | undefined
+    if (data?.data?.mergeable && data.data.property) return data.data.property
+  }
+  return null
+}
+
 // ─── Generic helpers ──────────────────────────────────────────────────────────
 export const extractPagination = (headers: Record<string, string>) => ({
   total: parseInt(headers['x-wp-total'] ?? '0'),
@@ -61,11 +72,14 @@ export const propertiesApi = {
   get:  (id: number) => api.get(`/properties/${id}`),
   similar: (id: number) => api.get(`/properties/${id}/similar`),
   sameOwner: (id: number) => api.get(`/properties/${id}/same-owner`),
+  checkUnitNumber: (params: { unit_number: string; listing_type: string; exclude_id?: number }) => api.get('/properties/check-unit-number', { params }),
   create: (data: unknown) => api.post('/properties', data),
   update: (id: number, data: unknown) => api.put(`/properties/${id}`, data),
   delete: (id: number) => api.delete(`/properties/${id}`),
-  uploadImage: (id: number, formData: FormData) => api.post(`/properties/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  deleteImage: (id: number, url: string) => api.delete(`/properties/${id}/images`, { params: { url } }),
+  uploadImage: (id: number, formData: FormData, type: 'property' | 'document' = 'property') =>
+    api.post(`/properties/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, params: { type } }),
+  deleteImage: (id: number, url: string, type: 'property' | 'document' = 'property') =>
+    api.delete(`/properties/${id}/images`, { params: { url, type } }),
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -181,5 +195,5 @@ export const dashboardApi = {
   stats: () => api.get('/dashboard/stats'),
 }
 
-export { parseError }
+export { parseError, getMergeableProperty }
 export default api

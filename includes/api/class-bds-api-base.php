@@ -53,7 +53,7 @@ abstract class BDS_API_Base {
 
     protected function format_item($item): array {
         $data = (array) $item;
-        foreach (['images', 'metadata', 'documents'] as $key) {
+        foreach (['images', 'metadata', 'documents', 'documents_images'] as $key) {
             if (isset($data[$key]) && is_string($data[$key])) {
                 $decoded = json_decode($data[$key], true);
                 $data[$key] = is_array($decoded) ? $decoded : null;
@@ -100,6 +100,10 @@ abstract class BDS_API_Base {
 
     protected function bad_request(string $msg): WP_Error {
         return new WP_Error('bad_request', $msg, ['status' => 400]);
+    }
+
+    protected function conflict(string $msg, array $extra = []): WP_Error {
+        return new WP_Error('conflict', $msg, array_merge(['status' => 409], $extra));
     }
 
     protected function search_where(string $search, array $columns): array {

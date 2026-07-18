@@ -39,6 +39,7 @@ export interface Property {
   title: string
   project_name: string
   block: string
+  zone: string
   floor: string
   unit_number: string
   area_gross: number
@@ -64,8 +65,15 @@ export interface Property {
   road: string
   dimensions: string
   tag: string
+  legal_status: string
+  is_exclusive: boolean
   description: string
   images: string[] | null
+  documents_images: string[] | null
+  web_title: string
+  web_description: string
+  sale_contact: string
+  video_url: string
   created_by: number
   updated_by: number
   updated_by_name?: string
@@ -76,6 +84,7 @@ export interface Property {
   owner_name: string
   owner_phone: string
   owner_phone_2: string
+  owner_email: string
   contact_status: string
   owner_selling_price: number | null
   owner_commission_rate: number | null
@@ -83,13 +92,15 @@ export interface Property {
 }
 
 export const CONTACT_STATUS_LABELS: Record<string, string> = {
-  not_answered: 'Không bắt máy',
-  no_need: 'Không có nhu cầu',
-  wrong_number: 'Sai số ĐT',
-  blocked: 'Số bị chặn',
-  subscriber_off: 'Thuê bao',
+  contacted: 'Đã liên hệ',
   unreachable: 'Không liên hệ được',
-  contacted: 'Đã liên hệ được',
+  subscriber_off: 'Thuê bao',
+}
+
+export const LEGAL_STATUS_LABELS: Record<string, string> = {
+  so_hong: 'Sổ hồng',
+  hdmb: 'HĐMB',
+  dang_lam_so: 'Đang làm sổ',
 }
 
 export interface Project {

@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BDS_VERSION', '1.12.0');
+define('BDS_VERSION', '1.14.0');
 define('BDS_PLUGIN_FILE', __FILE__);
 define('BDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BDS_PLUGIN_URL', plugin_dir_url(__FILE__));
