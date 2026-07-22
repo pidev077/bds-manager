@@ -164,9 +164,8 @@ export const getPropertyStatusLabel = (status: string, listingType?: string): st
   (PROPERTY_STATUS_LABELS_BY_LISTING[listingType ?? ''] ?? PROPERTY_STATUS_LABELS)[status] ?? status
 
 export const PROPERTY_TAG_LABELS: Record<string, string> = {
-  hot: 'HOT',
-  priority: 'Ưu tiên',
   normal: 'Thường',
+  exclusive: 'Độc quyền',
 }
 
 export const STANDARD_OPTIONS: { value: string; label: string }[] = [

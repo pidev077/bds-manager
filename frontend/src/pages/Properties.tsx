@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Search, ChevronRight, ChevronLeft, Link2, ShoppingCart, ImagePlus, X, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search, ChevronRight, ChevronLeft, Link2, ShoppingCart, ImagePlus, X, SlidersHorizontal, Crown } from 'lucide-react'
 import { propertiesApi, customersApi, cartApi, projectsApi, parseError, getMergeableProperty } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { formatArea, formatCurrency, formatDate, formatTime } from '@/lib/utils'
@@ -53,11 +53,11 @@ type FormData = {
   bathrooms: number; direction: string; balcony_direction: string; view_type: string; price: number
   price_per_sqm: number; price_rent: number; road: string; dim_width: number; dim_length: number; tag: string
   listing_type: string; property_type: string; fund_type: string; status: string; standard: string; description: string
-  legal_status: string; is_exclusive: boolean
+  legal_status: string
   commission_sale_type: string; commission_sale_value: number; commission_rent_type: string; commission_rent_value: number
   owner_name: string; owner_phone: string; owner_phone_2: string; owner_email: string; contact_status: string
-  owner_selling_price: number; owner_commission_rate: number; owner_notes: string
-  web_title: string; web_description: string; sale_contact: string; video_url: string
+  owner_notes: string
+  web_description: string; sale_contact: string; video_url: string
 }
 
 // "Ngang x dài" lưu trong DB dưới dạng 1 chuỗi (cột dimensions hiện có) nhưng form nhập 2 ô số riêng
@@ -261,7 +261,7 @@ export default function Properties() {
   const buildEditFormValues = (p: Property) => ({
     ...p, ...parseDimensions(p.dimensions), area_gross: p.area_gross, area_net: p.area_net, price: p.price, bedrooms: p.bedrooms, bathrooms: p.bathrooms,
     owner_name: p.owner_name, owner_phone: p.owner_phone, owner_phone_2: p.owner_phone_2, owner_email: p.owner_email, contact_status: p.contact_status,
-    owner_selling_price: p.owner_selling_price ?? undefined, owner_commission_rate: p.owner_commission_rate ?? undefined, owner_notes: p.owner_notes,
+    owner_notes: p.owner_notes,
   })
 
   // "dim_width"/"dim_length" chỉ tồn tại trên form (UX tách Ngang/Dài) — ghép lại thành 1 chuỗi
@@ -623,7 +623,7 @@ export default function Properties() {
                 ) : properties.length === 0 ? (
                   <tr><td colSpan={17}><EmptyState /></td></tr>
                 ) : properties.map(p => (
-                  <tr key={p.id} className="table-row cursor-pointer" onClick={() => setViewing(p)}>
+                  <tr key={p.id} className={`table-row cursor-pointer ${p.tag === 'exclusive' ? 'bg-red-50/60' : ''}`} onClick={() => setViewing(p)}>
                     <td className="table-cell text-gray-500">{p.code || '-'}</td>
                     <td className="table-cell">
                       {p.owner_name ? (
@@ -642,6 +642,11 @@ export default function Properties() {
                         <span className="font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => setViewing(p)}>
                           {p.unit_number || p.code || `#${p.id}`}
                         </span>
+                        {p.tag === 'exclusive' && (
+                          <span className="inline-flex items-center gap-0.5 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" title="Độc quyền">
+                            <Crown size={10} className="fill-yellow-300 text-yellow-300" /> ĐỘC QUYỀN
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1">
                         {p.images && p.images.length > 0 && (
@@ -675,7 +680,7 @@ export default function Properties() {
                     <td className="table-cell text-gray-500">{STANDARD_OPTIONS.find(o => o.value === p.standard)?.label || p.standard || '-'}</td>
                     <td className="table-cell">{p.direction || '-'}</td>
                     <td className="table-cell">
-                      {p.tag ? <Badge label={PROPERTY_TAG_LABELS[p.tag] ?? p.tag} color={p.tag === 'hot' ? 'red' as never : p.tag === 'priority' ? 'yellow' as never : 'gray' as never} /> : '-'}
+                      {p.tag ? <Badge label={PROPERTY_TAG_LABELS[p.tag] ?? p.tag} color={p.tag === 'exclusive' ? 'red' as never : 'gray' as never} /> : '-'}
                     </td>
                     <td className="table-cell text-gray-500 max-w-[180px] truncate" title={p.description}>{p.description || '-'}</td>
                     <td className="table-cell text-gray-500">
@@ -907,10 +912,6 @@ export default function Properties() {
               {Object.entries(PROPERTY_TAG_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
-          <div className="flex items-center gap-2 pt-6">
-            <input type="checkbox" id="is_exclusive" className="w-4 h-4" {...register('is_exclusive')} />
-            <label htmlFor="is_exclusive" className="text-sm text-gray-700 cursor-pointer">Độc quyền</label>
-          </div>
           <div>
             <label className="label">Trạng thái BĐS</label>
             <select className="input" {...register('status')}>
@@ -960,24 +961,12 @@ export default function Properties() {
               {Object.entries(CONTACT_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
-          <div>
-            <label className="label">Giá bán chủ nhà yêu cầu (VNĐ)</label>
-            <input className="input" type="number" {...register('owner_selling_price', { valueAsNumber: true })} placeholder="0" />
-          </div>
-          <div>
-            <label className="label">Hoa hồng (%)</label>
-            <input className="input" type="number" step="0.1" {...register('owner_commission_rate', { valueAsNumber: true })} placeholder="VD: 1" />
-          </div>
           <div className="form-full-compact">
             <label className="label">Ghi chú chủ nhà</label>
             <textarea className="input" rows={2} {...register('owner_notes')} placeholder="VD: Chủ cần bán gấp" />
           </div>
 
           <div className="form-full-compact form-section-header">Giao diện đăng lên web</div>
-          <div>
-            <label className="label">Tiêu đề tin đăng</label>
-            <input className="input" {...register('web_title')} placeholder="Tiêu đề hiển thị khi đăng tin" />
-          </div>
           <div>
             <label className="label">SĐT / Tên sale</label>
             <input className="input" {...register('sale_contact')} placeholder="VD: 0909xxxxxx - Anh Tuấn" />
@@ -1157,7 +1146,7 @@ export default function Properties() {
               )}
               <div><p className="text-gray-400 text-xs">Trạng thái</p><Badge label={getPropertyStatusLabel(viewing.status, viewing.listing_type)} color={PROPERTY_STATUS_COLORS[viewing.status] as never ?? 'gray'} dot /></div>
               <div><p className="text-gray-400 text-xs">Loại giao dịch</p><Badge label={LISTING_TYPE_LABELS[viewing.listing_type] ?? viewing.listing_type} color="blue" /></div>
-              {viewing.tag && <div><p className="text-gray-400 text-xs">Phân loại</p><Badge label={PROPERTY_TAG_LABELS[viewing.tag] ?? viewing.tag} color={viewing.tag === 'hot' ? 'red' as never : viewing.tag === 'priority' ? 'yellow' as never : 'gray' as never} /></div>}
+              {viewing.tag && <div><p className="text-gray-400 text-xs">Phân loại</p><Badge label={PROPERTY_TAG_LABELS[viewing.tag] ?? viewing.tag} color={viewing.tag === 'exclusive' ? 'red' as never : 'gray' as never} /></div>}
               <div><p className="text-gray-400 text-xs">Cập nhật lần cuối</p><p className="font-medium">{viewing.updated_by_name || '--'} · {formatDate(viewing.updated_at)}</p></div>
             </div>
             {viewing.description && (
@@ -1174,8 +1163,6 @@ export default function Properties() {
                   <div><p className="text-gray-400 text-xs">Tên chủ nhà</p><p className="font-medium">{viewing.owner_name}</p></div>
                   <div><p className="text-gray-400 text-xs">SĐT / SĐT phụ</p><p className="font-medium flex items-center gap-2"><MaskedPhone phone={viewing.owner_phone} /> / <MaskedPhone phone={viewing.owner_phone_2} /></p></div>
                   <div><p className="text-gray-400 text-xs">Trạng thái liên hệ</p><p className="font-medium">{CONTACT_STATUS_LABELS[viewing.contact_status] ?? viewing.contact_status ?? '--'}</p></div>
-                  <div><p className="text-gray-400 text-xs">Giá chủ nhà yêu cầu</p><p className="font-medium">{viewing.owner_selling_price ? formatCurrency(viewing.owner_selling_price) : '--'}</p></div>
-                  <div><p className="text-gray-400 text-xs">Hoa hồng</p><p className="font-medium">{viewing.owner_commission_rate ? `${viewing.owner_commission_rate}%` : '--'}</p></div>
                   {viewing.owner_notes && <div className="col-span-3"><p className="text-gray-400 text-xs">Ghi chú</p><p className="font-medium">{viewing.owner_notes}</p></div>}
                 </div>
               </div>

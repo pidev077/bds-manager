@@ -399,6 +399,15 @@ class BDS_Database {
         $wpdb->update($wpdb->prefix . 'bds_properties', ['tag' => 'normal'], ['tag' => 'bonus']);
     }
 
+    // "Phân loại" thu gọn chỉ còn Thường/Độc quyền: gộp cột `is_exclusive` (checkbox riêng) vào `tag`,
+    // và các dòng cũ mang tag "hot"/"priority" (đã bỏ khỏi lựa chọn) chuyển về "normal".
+    public static function migrate_tag_exclusive(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bds_properties';
+        $wpdb->update($table, ['tag' => 'exclusive'], ['is_exclusive' => 1]);
+        $wpdb->query("UPDATE {$table} SET tag = 'normal' WHERE tag IN ('hot', 'priority')");
+    }
+
     // Cột `listing_type` mới thêm, mặc định 'sale' cho mọi dòng cũ — suy luận lại từ dữ liệu giá đã có
     // sẵn: căn nào chỉ có giá thuê (không có giá bán) thì đổi sang 'rent'; căn nào có cả 2 giá thì 'both'.
     public static function migrate_listing_types(): void {

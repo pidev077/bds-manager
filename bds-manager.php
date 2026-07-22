@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BDS_VERSION', '1.14.0');
+define('BDS_VERSION', '1.15.0');
 define('BDS_PLUGIN_FILE', __FILE__);
 define('BDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BDS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -65,6 +65,7 @@ add_action('plugins_loaded', function () {
         BDS_Database::migrate_standards();
         BDS_Database::migrate_tags();
         BDS_Database::migrate_listing_types();
+        BDS_Database::migrate_tag_exclusive();
         update_option('bds_version', BDS_VERSION);
     }
 });
